@@ -64,11 +64,23 @@ export default function TitleBar({ onToggleSidebar, sidebarOpen }: Props) {
       <IconBtn title="Forward" disabled>
         <ChevronRight size={16} strokeWidth={1.75} />
       </IconBtn>
-      {/* drag region fills the remaining space; window controls are native (autoHideMenuBar hides menu, Win controls on right) */}
+      {/* drag region fills the remaining space; window controls are native */}
       <div className="flex-1 h-full" />
+
+      {/* App Name & Version (Absolute Centered) */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-xs font-semibold text-fg-muted select-none pointer-events-none">
+        <span>StratForge AI</span>
+        <span className="text-[10px] font-medium bg-bg-hover px-1.5 py-0.5 rounded-md border border-border">
+          v0.1.0
+        </span>
+      </div>
       {/* Claude Code-style right-pane mode menu (Preview / Diff / Terminal /
           Files / Tasks / Plan). Sits before the native window controls. */}
-      <RightPaneMenu />
+      {/* Claude Code-style right-pane mode menu (Preview / Diff / Terminal /
+          Files / Tasks / Plan). Sits before the native window controls. */}
+      <div className="flex items-center gap-1">
+        <RightPaneMenu />
+      </div>
     </div>
   );
 }

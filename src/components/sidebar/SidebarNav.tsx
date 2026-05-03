@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, ChevronDown, type LucideIcon } from 'lucide-react';
+import { Plus, ChevronDown, BookOpen, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { toast } from '../ui/Toast';
+import TemplateLibraryModal from './TemplateLibraryModal';
 
 interface NavItemProps {
   icon: LucideIcon;
@@ -42,6 +43,7 @@ interface Props {
 
 export default function SidebarNav({ onNewSession }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   return (
     <div className="px-2 pb-2 space-y-0.5">
@@ -60,6 +62,11 @@ export default function SidebarNav({ onNewSession }: Props) {
       {moreOpen && (
         <div className="pl-6 space-y-0.5">
           <NavItem
+            icon={BookOpen}
+            label="Templates Library"
+            onClick={() => setTemplatesOpen(true)}
+          />
+          <NavItem
             icon={Plus}
             label="Documentation"
             onClick={() => toast('Docs — coming soon')}
@@ -71,6 +78,11 @@ export default function SidebarNav({ onNewSession }: Props) {
           />
         </div>
       )}
+
+      <TemplateLibraryModal 
+        open={templatesOpen} 
+        onClose={() => setTemplatesOpen(false)} 
+      />
     </div>
   );
 }

@@ -27,37 +27,37 @@
 }
 
 .light {
-  --color-bg: #faf9f7;
-  --color-bg-sidebar: #f3f1ed;
+  --color-bg: #f4f4f5;
+  --color-bg-sidebar: #ececf1;
   --color-bg-panel: #ffffff;
-  --color-bg-hover: #ebe8e2;
-  --color-bg-active: #ddd9d0;
-  --color-bg-titlebar: #f3f1ed;
+  --color-bg-hover: #e4e4e7;
+  --color-bg-active: #d4d4d8;
+  --color-bg-titlebar: #ececf1;
 
-  --color-border: #d9d5cd;
-  --color-border-strong: #b8b3a8;
-  --color-border-subtle: #e6e3dc;
+  --color-border: #d4d4d8;
+  --color-border-strong: #a1a1aa;
+  --color-border-subtle: #e4e4e7;
 
-  --color-fg: #1f1e1d;
-  --color-fg-muted: #5a5652;
-  --color-fg-subtle: #7a7672;
-  --color-fg-faint: #a09d99;
+  --color-fg: #18181b;
+  --color-fg-muted: #52525b;
+  --color-fg-subtle: #71717a;
+  --color-fg-faint: #a1a1aa;
 
-  --color-accent: #c8724d;
-  --color-accent-hover: #b8633e;
-  --color-accent-subtle: rgba(200, 114, 77, 0.12);
+  --color-accent: #c85a32;
+  --color-accent-hover: #a14522;
+  --color-accent-subtle: rgba(200, 90, 50, 0.12);
 }
 
 .light body {
-  background-color: #faf9f7;
-  color: #1f1e1d;
+  background-color: #f4f4f5;
+  color: #18181b;
 }
 
 .light ::-webkit-scrollbar-thumb {
-  background: #d9d5cd;
+  background: #d4d4d8;
 }
 .light ::-webkit-scrollbar-thumb:hover {
-  background: #b8b3a8;
+  background: #a1a1aa;
 }
 
 @layer base {

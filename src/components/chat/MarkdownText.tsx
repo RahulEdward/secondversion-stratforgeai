@@ -18,6 +18,48 @@ import typescript from 'highlight.js/lib/languages/typescript';
 import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
 import { cn } from '@/lib/cn';
+import Tooltip from '../ui/Tooltip';
+
+const TOOLTIPS: Record<string, string> = {
+  'Sharpe': 'Measures risk-adjusted return. >1 is good, >2 is excellent.',
+  'Sortino': 'Similar to Sharpe, but only penalizes downside volatility.',
+  'Profit Factor': 'Gross profits divided by gross losses. >1.5 is strong.',
+  'Max Drawdown': 'The largest peak-to-trough drop in equity. Lower is better.',
+  'Maximum Drawdown': 'The largest peak-to-trough drop in equity. Lower is better.',
+  'Walk-Forward Efficiency': 'Measures if a strategy overfits. >0.5 suggests robustness.',
+  'MC Survival Rate': 'Probability of not hitting your drawdown limit in Monte Carlo.',
+  'Win Rate': 'Percentage of trades that were profitable.',
+  'p-value': 'Probability that the strategy returns are due to random chance. <0.05 is statistically significant.',
+};
+
+function withTooltips(text: string): React.ReactNode {
+  const terms = Object.keys(TOOLTIPS);
+  const regex = new RegExp(`\\b(${terms.join('|')})\\b`, 'g');
+  
+  const parts: React.ReactNode[] = [];
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > lastIdx) parts.push(text.slice(lastIdx, m.index));
+    const termMatch = m[1];
+    const dictKey = terms.find(t => t === termMatch) || terms.find(t => t.toLowerCase() === termMatch.toLowerCase());
+    if (dictKey && TOOLTIPS[dictKey]) {
+      parts.push(
+        <Tooltip key={`tt${key++}`} content={TOOLTIPS[dictKey]}>
+          {termMatch}
+        </Tooltip>
+      );
+    } else {
+      parts.push(termMatch);
+    }
+    lastIdx = m.index + termMatch.length;
+  }
+  if (lastIdx < text.length) parts.push(text.slice(lastIdx));
+  
+  return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts;
+}
 
 hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('sh', bash);
@@ -214,7 +256,12 @@ function renderInline(text: string): React.ReactNode {
   let m: RegExpExecArray | null;
   let key = 0;
   while ((m = re.exec(text)) !== null) {
-    if (m.index > lastIdx) parts.push(text.slice(lastIdx, m.index));
+    if (m.index > lastIdx) {
+      const slice = text.slice(lastIdx, m.index);
+      const withTt = withTooltips(slice);
+      if (Array.isArray(withTt)) parts.push(...withTt);
+      else parts.push(withTt);
+    }
     const tok = m[0];
     if (/^\[[ xX]\] /.test(tok)) {
       const checked = /[xX]/.test(tok[1]);
@@ -291,7 +338,12 @@ function renderInline(text: string): React.ReactNode {
     }
     lastIdx = m.index + tok.length;
   }
-  if (lastIdx < text.length) parts.push(text.slice(lastIdx));
+  if (lastIdx < text.length) {
+    const slice = text.slice(lastIdx);
+    const withTt = withTooltips(slice);
+    if (Array.isArray(withTt)) parts.push(...withTt);
+    else parts.push(withTt);
+  }
   return parts;
 }
 

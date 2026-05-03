@@ -17,6 +17,7 @@ function createWindow() {
     backgroundColor: '#100517',
     title: 'StratForge AI',
     autoHideMenuBar: true,
+    icon: path.join(__dirname, '../public/icon.ico'),
     // Hide the default OS titlebar, render native min/max/close buttons as an overlay
     // tinted to match the sidebar color so the top strip is fully dark on Windows 11.
     titleBarStyle: 'hidden',
@@ -54,7 +55,7 @@ app.whenReady().then(() => {
   ipcMain.handle('set-titlebar-theme', (_event, theme: 'light' | 'dark') => {
     if (!mainWindow) return;
     if (theme === 'light') {
-      mainWindow.setTitleBarOverlay({ color: '#f3f1ed', symbolColor: '#170721' });
+      mainWindow.setTitleBarOverlay({ color: '#ececf1', symbolColor: '#18181b' });
     } else {
       mainWindow.setTitleBarOverlay({ color: '#100517', symbolColor: '#ebe6f0' });
     }

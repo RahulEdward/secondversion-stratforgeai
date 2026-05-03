@@ -1,66 +1,59 @@
-# StratForge AI — Multi-Agent Trading Strategy Research Platform
-
-> **Autonomous AI-powered backtesting engine** that designs, tests, optimizes, and validates trading strategies using a multi-agent architecture with a plugin-based skills system.
+<div align="center">
+  <img src="https://img.shields.io/badge/Status-Beta-blue?style=for-the-badge" alt="Status" />
+  <img src="https://img.shields.io/badge/Python-3.11+-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react&logoColor=white" alt="React" />
+  <img src="https://img.shields.io/badge/Electron-33-blue?style=for-the-badge&logo=electron&logoColor=white" alt="Electron" />
+  <br />
+  <h1>🚀 StratForge AI</h1>
+  <p><strong>Autonomous Multi-Agent Trading Strategy Research Platform</strong></p>
+  <p>Design, Test, Optimize, and Validate trading strategies with zero code using a Multi-Agent LLM architecture.</p>
+</div>
 
 ---
 
-## 🚀 What It Does
+## ✨ Features Highlight
 
-StratForge AI is a desktop application where you simply describe what you want — *"Build me a profitable intraday strategy"* — and the AI autonomously:
+StratForge AI is a desktop application where you simply describe what you want — *"Build me a profitable intraday strategy"* — and the AI autonomously handles the rest.
 
-1. **Analyzes your data** (regime detection, volatility profiling)
-2. **Designs multiple strategy variants** (trend, mean-reversion, momentum)
-3. **Backtests each variant** with realistic fees & slippage
-4. **Optimizes parameters** via grid search
-5. **Validates with Walk-Forward analysis** (overfitting detection)
-6. **Runs Monte Carlo simulations** (statistical significance)
-7. **Scores & grades** strategies (A+ to F with hard veto gates)
-8. **Generates PDF reports** with equity curves and charts
-9. **Iterates automatically** until a passing strategy is found
+- 🧠 **Autonomous Multi-Agent Loop:** Master, Analyst, Architect, Backtester, and Evaluator agents work together to research strategies.
+- 🧩 **Pre-built Templates Library:** Kickstart your research with built-in templates like VWAP Breakout, Dual SuperTrend, and MACD Crossover.
+- 🎨 **Sleek UI with Dark/Light Mode:** High-contrast, premium interface with seamless Theme Toggling.
+- 📊 **Visual Progress Tracker:** Real-time Stepper tracking the Multi-Agent loop (Data Analyst ➔ Architect ➔ Backtester ➔ Evaluator).
+- 🛠️ **Smart Alerts & Auto-Fix:** Intelligent error catching with "Fix this automatically" capabilities.
+- 📑 **Comprehensive Reporting:** Automated generation of HTML and PDF reports detailing Walk-Forward, Monte Carlo, and Backtest results.
+- 📤 **One-Click Share:** Easily share your profitable strategy reports to Telegram or Discord.
 
 ---
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────┐
-│                  Electron Desktop App            │
-│                  (React + Vite UI)                │
-├─────────────────────────────────────────────────┤
-│               FastAPI Backend (Python)            │
-│                                                   │
-│  ┌─────────────┐  ┌──────────────────────────┐   │
-│  │ Orchestrator │  │   Multi-Agent System      │   │
-│  │ (Chat Loop)  │──│  ├─ MasterAgent          │   │
-│  │              │  │  ├─ DataAnalyst           │   │
-│  │              │  │  ├─ StrategyArchitect     │   │
-│  │              │  │  ├─ Backtester            │   │
-│  │              │  │  └─ Evaluator             │   │
-│  └──────┬───────┘  └──────────────────────────┘   │
-│         │                                         │
-│  ┌──────▼──────────────────────────────────────┐  │
-│  │        Skills Registry (Plugin System)       │  │
-│  │  ┌──────────┐ ┌──────────┐ ┌─────────────┐  │  │
-│  │  │Indicators│ │Backtests │ │  Reporting   │  │  │
-│  │  │ (65+)    │ │+Pipeline │ │  HTML+PDF    │  │  │
-│  │  └──────────┘ └──────────┘ └─────────────┘  │  │
-│  │  ┌──────────┐ ┌──────────┐ ┌─────────────┐  │  │
-│  │  │ Library  │ │ Dataset  │ │Agent Tools   │  │  │
-│  │  │Save/Load │ │Validator │ │Shell/File/Py │  │  │
-│  │  └──────────┘ └──────────┘ └─────────────┘  │  │
-│  └─────────────────────────────────────────────┘  │
-│                                                   │
-│  ┌─────────────────────────────────────────────┐  │
-│  │         Core Engines                         │  │
-│  │  VectorBT · Pandas · NumPy · Plotly · Jinja │  │
-│  │  SQLite · Pydantic · Playwright (PDF)        │  │
-│  └─────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    UI[Electron Desktop App <br/> React + Vite] <--> API[FastAPI Backend <br/> Python]
+    
+    subgraph Multi-Agent System
+        Master[MasterAgent] --> Analyst[DataAnalyst]
+        Master --> Architect[StrategyArchitect]
+        Master --> Backtester[Backtester]
+        Master --> Evaluator[Evaluator]
+    end
+
+    API --> Master
+    
+    subgraph Skills Registry
+        Indicators[65+ Indicators]
+        BT[Backtest + Optimizer]
+        Reports[HTML+PDF Reports]
+        DB[Library & DB]
+    end
+
+    Backtester --> BT
+    Architect --> Indicators
 ```
 
 ---
 
-## 🤖 Multi-Agent System
+## 🤖 The AI Team
 
 | Agent | LLM? | Speed | Role |
 |-------|------|-------|------|
@@ -74,65 +67,32 @@ StratForge AI is a desktop application where you simply describe what you want �
 
 ---
 
+## 📊 Scoring & Validation
+
+Strategies are rigorously stress-tested and graded **A+ to F** with hard veto gates:
+
+- **Minimum trades:** ≥ 100
+- **Max drawdown:** > -50%
+- **Profit factor:** > 1.0
+- **Walk-forward efficiency:** ≥ 0.5
+- **Monte Carlo survival:** ≥ 70%
+
+---
+
 ## 🔌 Skills System (Plugin Architecture)
 
-```
-backend/app/skills/
-├── base.py                  # BaseSkill ABC (strict contract)
-├── registry.py              # Auto-discovery + routing + timeout
-├── indicator_skill/         # 65+ technical indicators
-├── backtest_skill/          # Backtest + optimize + WF + MC + scoring
-├── report_skill/            # HTML+PDF report generation
-├── library_skill/           # Strategy save/load/list
-├── dataset_skill/           # Dataset inspection & validation
-└── agent_skill/             # Shell/file/Python system tools
-```
+StratForge uses a robust plugin architecture. Adding a new skill is as simple as dropping a folder into `backend/app/skills/`. No core code changes required!
 
-**Adding a new skill = just drop a folder.** No core code changes required.
-
-Each skill implements:
-```python
-class Skill(BaseSkill):
-    name = "my_skill"
-    description = "What it does"
-    
-    def tools(self):       # Returns LLM tool schemas
-    async def execute():   # Runs the logic
-```
+- `indicator_skill/`
+- `backtest_skill/`
+- `report_skill/`
+- `library_skill/`
+- `dataset_skill/`
+- `agent_skill/`
 
 ---
 
-## 📊 Scoring System
-
-Strategies are graded **A+ to F** with hard veto gates:
-
-| Veto Rule | Threshold |
-|-----------|-----------|
-| Minimum trades | ≥ 100 |
-| Max drawdown | > -50% |
-| Profit factor | > 1.0 |
-| Walk-forward efficiency | ≥ 0.5 |
-| Monte Carlo survival | ≥ 70% |
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Desktop | Electron 33 |
-| Frontend | React 18 + Vite |
-| Backend | FastAPI + Uvicorn |
-| Backtesting | VectorBT Pro |
-| Data | Pandas + NumPy + Parquet |
-| Charts | Plotly.js |
-| Reports | Jinja2 + Playwright (PDF) |
-| Database | SQLite |
-| AI Providers | Anthropic / OpenAI / Google |
-
----
-
-## 📦 Setup
+## 🚀 Setup & Installation
 
 ### Prerequisites
 - **Node.js** 18+
@@ -155,68 +115,28 @@ pip install -r requirements.txt
 cd ..
 ```
 
-### Run
+### Run the App
 
 ```bash
 npm run dev
 ```
 
 This starts both:
-- **UI:** http://localhost:5173 (Electron window)
-- **API:** http://127.0.0.1:8765
+- **UI:** `http://localhost:5173` (Electron window)
+- **API:** `http://127.0.0.1:8765`
 
 ---
 
 ## 🧪 Quick Test
 
-Open a new session in the app and type:
+Open a new session in the app, click **Templates Library** under the `More` menu, or type:
 
-```
-Build me a profitable trading strategy on this data
-```
+> *"Build me a profitable trading strategy on this data"*
 
-The AI will autonomously research, test, iterate, and deliver the best strategy with a full report.
+The AI will autonomously research, test, iterate, and deliver the best strategy with a full report!
 
 ---
 
-## 📁 Project Structure
-
-```
-startfoge-ai-main/
-├── backend/
-│   ├── app/
-│   │   ├── agents/           # Multi-agent system
-│   │   │   ├── master.py     # Supervisor agent
-│   │   │   ├── analyst.py    # Data analysis
-│   │   │   ├── architect.py  # Strategy design
-│   │   │   ├── backtester.py # Pipeline execution
-│   │   │   └── evaluator.py  # Result evaluation
-│   │   ├── skills/           # Plugin system
-│   │   │   ├── registry.py   # Auto-discovery
-│   │   │   ├── base.py       # Skill interface
-│   │   │   └── *_skill/      # Individual skills
-│   │   ├── indicators/       # 65+ indicator implementations
-│   │   ├── reports/          # Report templates + renderer
-│   │   ├── orchestrator.py   # Chat loop + agent routing
-│   │   ├── strategies.py     # Strategy DSL (Pydantic)
-│   │   ├── backtest.py       # VectorBT engine
-│   │   ├── optimize.py       # Grid optimization
-│   │   ├── validate.py       # Walk-forward + Monte Carlo
-│   │   ├── scoring.py        # A+ to F grading
-│   │   ├── tools.py          # Tool schemas
-│   │   └── tool_exec.py      # Tool dispatcher
-│   └── main.py               # FastAPI entry point
-├── src/                      # React frontend
-├── electron/                 # Electron main process
-└── package.json
-```
-
----
-
-## 📄 License
-
-MIT
-
----
-
-**Built with ❤️ by RahulEdward**
+<div align="center">
+  <p><b>Built with ❤️ by RahulEdward</b></p>
+</div>

@@ -15,6 +15,10 @@ export default function ChatInput() {
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   const disabled = !session;
+  const lastMessage = session?.messages?.[session.messages.length - 1];
+  const hasError = lastMessage?.content?.includes('❌ Error') || 
+                   lastMessage?.content?.includes('❌ Backtest failed') ||
+                   lastMessage?.content?.includes('failed:');
 
   const autosize = () => {
     const el = taRef.current;
@@ -44,9 +48,25 @@ export default function ChatInput() {
   };
 
   return (
-    <div
-      className={cn(
-        'relative bg-bg-panel border border-border-subtle rounded-pill',
+    <div className="flex flex-col gap-2">
+      {/* Smart Alerts & Auto-Fix Quick Action */}
+      {!streaming && lastMessage?.role === 'assistant' && hasError && (
+        <div className="flex px-1">
+          <button
+            onClick={() => {
+              sendMessage(session!.id, 'Fix this error automatically.');
+            }}
+            className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+          >
+            <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+            Fix this automatically
+          </button>
+        </div>
+      )}
+
+      <div
+        className={cn(
+          'relative bg-bg-panel border border-border-subtle rounded-pill',
         'focus-within:border-border transition-colors',
         disabled && 'opacity-60',
       )}
@@ -90,6 +110,7 @@ export default function ChatInput() {
             <ArrowUp size={14} strokeWidth={2} />
           </button>
         )}
+      </div>
       </div>
     </div>
   );

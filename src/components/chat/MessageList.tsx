@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import type { Message } from '@/lib/api';
 import MarkdownText from './MarkdownText';
+import AgentStepper from './AgentStepper';
 import { extractReportId } from '@/lib/artifactCommands';
 
 export default function MessageList() {
@@ -224,22 +225,34 @@ function MessageContent({ message, pendingToolIds = new Set() }: { message: Mess
     <>
       {text && (
         <div className="text-sm text-fg">
+          <AgentStepper text={text} />
           <MarkdownText source={text} />
         </div>
       )}
-      {/* Layer 3 — explicit fallback button. Renders only on assistant
-          messages that mention a report id. Plain markdown links in
-          the body would try to navigate the Electron renderer; this
-          button stays in-app and just toggles store state. */}
+      {/* Layer 3 — explicit fallback button & Share */}
       {mentionedReportId && (
-        <button
-          onClick={() => setActiveReport(mentionedReportId, null)}
-          title={`Open ${mentionedReportId} in artifacts panel`}
-          className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-accent/15 hover:bg-accent/25 text-accent border border-accent/30 transition-colors"
-        >
-          <FileText size={12} strokeWidth={2} />
-          Open in Artifacts
-        </button>
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={() => setActiveReport(mentionedReportId, null)}
+            title={`Open ${mentionedReportId} in artifacts panel`}
+            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-accent/15 hover:bg-accent/25 text-accent border border-accent/30 transition-colors"
+          >
+            <FileText size={12} strokeWidth={2} />
+            Open in Artifacts
+          </button>
+          <button
+            onClick={() => {
+              const shareText = `Check out my new algorithmic trading strategy! Generated with StratForge AI.\nReport ID: ${mentionedReportId}`;
+              navigator.clipboard.writeText(shareText);
+            }}
+            title="Copy Share Text"
+            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-[#24A1DE]/15 hover:bg-[#24A1DE]/25 text-[#24A1DE] border border-[#24A1DE]/30 transition-colors"
+          >
+            {/* Share Icon placeholder, using text since lucide icon might not be imported yet */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            Share
+          </button>
+        </div>
       )}
       {toolUses.map((tu, i) => (
         <div key={i} className="text-xs bg-bg-hover border border-border-subtle rounded-lg px-3 py-2 flex items-center gap-2">
