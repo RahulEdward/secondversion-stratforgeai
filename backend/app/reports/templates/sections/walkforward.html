@@ -1,0 +1,90 @@
+<section>
+  <h2>Walk-forward analysis</h2>
+
+  <div class="panel" style="margin-bottom:14px;">
+    <div style="display:flex; gap:24px; flex-wrap:wrap;">
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">WFE</div>
+        <div style="font-size:22px; font-weight:600;">
+          {{ wf.wfe|fmt_num(3) if wf.wfe is not none else "—" }}
+        </div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">OOS mean Sharpe</div>
+        <div style="font-size:22px; font-weight:600;">
+          {{ wf.aggregate.oos_mean_sharpe|fmt_num(3) }}
+        </div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">IS mean Sharpe</div>
+        <div style="font-size:22px; font-weight:600;">
+          {{ wf.aggregate.is_mean_sharpe|fmt_num(3) }}
+        </div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Folds with positive OOS</div>
+        <div style="font-size:22px; font-weight:600;">
+          {{ wf.aggregate.oos_pos_sharpe_folds }} / {{ wf.aggregate.oos_total_folds }}
+        </div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Mode</div>
+        <div style="font-size:14px; font-weight:500; padding-top:4px;">
+          {{ wf.fold_mode }} · split {{ "%.0f"|format(wf.is_oos_split * 100) }}/{{ "%.0f"|format((1 - wf.is_oos_split) * 100) }}
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px; color:var(--text); font-size:13px;">
+      <strong>Verdict:</strong> {{ wf.verdict }}
+    </div>
+  </div>
+
+  <div class="fig" id="fig-wf"></div>
+  <script type="application/json" id="wf-json">{{ wf_fig_json|safe }}</script>
+
+  <h3>Per-fold breakdown</h3>
+  <table class="rows">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>In-sample window</th>
+        <th>Out-of-sample window</th>
+        <th>Chosen point</th>
+        <th style="text-align:right">IS Sharpe</th>
+        <th style="text-align:right">OOS Sharpe</th>
+        <th style="text-align:right">IS return</th>
+        <th style="text-align:right">OOS return</th>
+        <th style="text-align:right">OOS maxDD</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in fold_rows %}
+      <tr>
+        <td>{{ f.fold_id }}</td>
+        <td class="muted">{{ f.is_range }}</td>
+        <td class="muted">{{ f.oos_range }}</td>
+        <td>
+          {% if f.chosen_point %}
+            {% for k, v in f.chosen_point.items() %}
+              <span class="chip">{{ k }}={{ v }}</span>
+            {% endfor %}
+          {% else %}
+            <span class="muted">base spec</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right">{{ f.is_sharpe }}</td>
+        <td style="text-align:right">{{ f.oos_sharpe }}</td>
+        <td style="text-align:right">{{ f.is_return }}</td>
+        <td style="text-align:right">{{ f.oos_return }}</td>
+        <td style="text-align:right">{{ f.oos_dd }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="muted" style="font-size:11px; margin-top:10px;">
+    WFE (walk-forward efficiency) = mean(OOS {{ wf.score_metric }}) / mean(IS {{ wf.score_metric }}).
+    Values in [0.5, 1.2] suggest a robust edge; &lt; 0.3 is severe overfit;
+    &gt; 1.2 is a regime-tail lucky streak — treat with caution.
+  </p>
+</section>

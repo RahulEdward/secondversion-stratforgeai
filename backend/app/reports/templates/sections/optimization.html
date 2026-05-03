@@ -1,0 +1,73 @@
+<section>
+  <h2>Parameter optimisation</h2>
+
+  <div class="panel" style="margin-bottom:14px;">
+    <div style="display:flex; gap:24px; flex-wrap:wrap;">
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Combinations tested</div>
+        <div style="font-size:22px; font-weight:600;">{{ opt.n_combinations|fmt_int }}</div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Passed vetos</div>
+        <div style="font-size:22px; font-weight:600;">{{ opt.n_passed|fmt_int }}</div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Ranked by</div>
+        <div style="font-size:16px; font-weight:500; padding-top:4px;">{{ opt.score_metric }}</div>
+      </div>
+    </div>
+
+    {% if best_in_robust %}
+    <div style="margin-top:16px;">
+      <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px;">
+        Best inside robust region
+      </div>
+      {% for k, v in (best_in_robust.point or {}).items() %}
+        <span class="chip">{{ k }}={{ v }}</span>
+      {% endfor %}
+      <span style="margin-left:12px; color:var(--accent); font-weight:600;">
+        score {{ best_in_robust.score|fmt_num(2) }}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  <h3>Top-ranked combinations</h3>
+  {% if opt_rows %}
+  <table class="rows">
+    <thead>
+      <tr>
+        <th>Parameters</th>
+        <th style="text-align:right">Sharpe</th>
+        <th style="text-align:right">Total return</th>
+        <th style="text-align:right">Max DD</th>
+        <th style="text-align:right">Trades</th>
+        <th style="text-align:right">Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in opt_rows %}
+      <tr>
+        <td>
+          {% for k, v in r.point.items() %}
+            <span class="chip">{{ k }}={{ v }}</span>
+          {% endfor %}
+        </td>
+        <td style="text-align:right">{{ r.sharpe }}</td>
+        <td style="text-align:right">{{ r.total_return }}</td>
+        <td style="text-align:right">{{ r.max_dd }}</td>
+        <td style="text-align:right">{{ r.num_trades }}</td>
+        <td style="text-align:right"><strong>{{ r.score }}</strong></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="font-size:12px;">No combinations passed the veto filters.</p>
+  {% endif %}
+
+  <p class="muted" style="font-size:11px; margin-top:10px;">
+    Best-in-robust-region is preferred over global-max to protect against
+    curve-fits where a single value spikes but its neighbours collapse.
+  </p>
+</section>

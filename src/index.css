@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS variables must live outside @layer so Tailwind doesn't strip them */
+:root,
+.dark {
+  --color-bg: #170721;
+  --color-bg-sidebar: #100517;
+  --color-bg-panel: #1f0c2d;
+  --color-bg-hover: #261134;
+  --color-bg-active: #321647;
+  --color-bg-titlebar: #100517;
+
+  --color-border: #2a163a;
+  --color-border-strong: #3d2151;
+  --color-border-subtle: #1f0d2b;
+
+  --color-fg: #ebe6f0;
+  --color-fg-muted: #a89db4;
+  --color-fg-subtle: #7d7188;
+  --color-fg-faint: #554a5e;
+
+  --color-accent: #c8724d;
+  --color-accent-hover: #b8633e;
+  --color-accent-subtle: rgba(200, 114, 77, 0.12);
+}
+
+.light {
+  --color-bg: #faf9f7;
+  --color-bg-sidebar: #f3f1ed;
+  --color-bg-panel: #ffffff;
+  --color-bg-hover: #ebe8e2;
+  --color-bg-active: #ddd9d0;
+  --color-bg-titlebar: #f3f1ed;
+
+  --color-border: #d9d5cd;
+  --color-border-strong: #b8b3a8;
+  --color-border-subtle: #e6e3dc;
+
+  --color-fg: #1f1e1d;
+  --color-fg-muted: #5a5652;
+  --color-fg-subtle: #7a7672;
+  --color-fg-faint: #a09d99;
+
+  --color-accent: #c8724d;
+  --color-accent-hover: #b8633e;
+  --color-accent-subtle: rgba(200, 114, 77, 0.12);
+}
+
+.light body {
+  background-color: #faf9f7;
+  color: #1f1e1d;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #d9d5cd;
+}
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #b8b3a8;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body {
+    background-color: #170721;
+    color: #ebe6f0;
+    font-family:
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      sans-serif;
+    font-size: 13px;
+    line-height: 18px;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  input,
+  textarea,
+  [contenteditable] {
+    user-select: text;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a163a;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3d2151;
+  }
+}
+
+@layer utilities {
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+}
+
+/* ─── highlight.js theme (Claude Code-style, tuned to project palette) ───
+ * Applied via <code class="hljs"> inside fenced code blocks. Token colours
+ * are hand-picked against --color-bg-sidebar so they read well on the
+ * panel background without blowing out brightness.
+ */
+.hljs {
+  color: var(--color-fg);
+  background: transparent;
+}
+.hljs-comment,
+.hljs-quote {
+  color: var(--color-fg-subtle);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: #c084fc; /* purple-400 — keywords, control flow */
+}
+.hljs-function .hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-class .hljs-title {
+  color: #fbbf24; /* amber-400 — function / class names */
+}
+.hljs-string,
+.hljs-attr,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition,
+.hljs-meta-string {
+  color: #86efac; /* emerald-300 — strings */
+}
+.hljs-number,
+.hljs-regexp,
+.hljs-built_in,
+.hljs-builtin-name {
+  color: #fdba74; /* orange-300 — numbers / built-ins */
+}
+.hljs-variable,
+.hljs-template-variable,
+.hljs-attribute,
+.hljs-name,
+.hljs-tag {
+  color: #93c5fd; /* blue-300 — variables / HTML tags */
+}
+.hljs-type,
+.hljs-params {
+  color: #67e8f9; /* cyan-300 — types / params */
+}
+.hljs-deletion {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+}
+.hljs-meta,
+.hljs-meta-keyword {
+  color: var(--color-fg-muted);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 600;
+}

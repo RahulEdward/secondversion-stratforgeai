@@ -1,0 +1,30 @@
+node_modules/
+dist/
+dist-electron/
+release/
+.vite/
+
+*.log
+.env
+.env.local
+
+__pycache__/
+*.pyc
+*.pyo
+backend/venv/
+backend/.venv/
+
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Claude Code working directories (worktrees, settings)
+.claude/
+
+# Local OAuth reference repo — not shipped
+openyak/
+
+# Patch files
+*.patch
+worktree_changes.patch

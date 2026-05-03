@@ -1,0 +1,22 @@
+<section class="cover">
+  <div class="brand">StratForge AI · Backtest Report</div>
+  <h1>{{ spec_name }}</h1>
+  <div class="subtitle">
+    Project: <strong>{{ project_name }}</strong> ·
+    Dataset: <span class="chip">{{ dataset_id }}</span> ·
+    Backtest: <span class="chip">{{ backtest_id }}</span>
+  </div>
+
+  <div>
+    <span class="grade-badge">Grade {{ scoring.grade }}</span>
+    <span class="verdict-badge">{{ scoring.verdict }}</span>
+  </div>
+  <div class="headline">{{ scoring.headline }}</div>
+
+  <div style="margin-top:18px; color:var(--muted); font-size:12px;">
+    Window: {{ start_time }} → {{ end_time }} ·
+    Bars: {{ n_bars|fmt_int }} ·
+    Starting capital: ${{ "%.0f"|format(init_cash) }} ·
+    Run at: {{ bt_created_at }}
+  </div>
+</section>

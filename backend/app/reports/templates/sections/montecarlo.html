@@ -1,0 +1,72 @@
+<section>
+  <h2>Monte Carlo bootstrap</h2>
+
+  <div class="panel" style="margin-bottom:14px;">
+    <div style="display:flex; gap:24px; flex-wrap:wrap;">
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Iterations</div>
+        <div style="font-size:22px; font-weight:600;">{{ mc.n_iterations|fmt_int }}</div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Trades resampled</div>
+        <div style="font-size:22px; font-weight:600;">{{ mc.n_trades|fmt_int }}</div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">p-value (mean &gt; 0)</div>
+        <div style="font-size:22px; font-weight:600;">{{ mc.p_value_positive_mean|fmt_num(4) }}</div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Expected total return</div>
+        <div style="font-size:22px; font-weight:600;">{{ mc.expected_total_return|fmt_pct(2) }}</div>
+      </div>
+      <div>
+        <div class="muted" style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Expected max DD</div>
+        <div style="font-size:22px; font-weight:600;">{{ mc.expected_max_drawdown|fmt_pct(2) }}</div>
+      </div>
+    </div>
+    <div style="margin-top:12px; color:var(--text); font-size:13px;">
+      <strong>Verdict:</strong> {{ mc.verdict }}
+    </div>
+  </div>
+
+  <div class="fig" id="fig-mc"></div>
+  <script type="application/json" id="mc-json">{{ mc_fig_json|safe }}</script>
+
+  <h3>Percentile bands</h3>
+  <table class="rows">
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th style="text-align:right">p5</th>
+        <th style="text-align:right">p25</th>
+        <th style="text-align:right">p50</th>
+        <th style="text-align:right">p75</th>
+        <th style="text-align:right">p95</th>
+        <th style="text-align:right">Mean</th>
+        <th style="text-align:right">Std</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in mc_rows %}
+      <tr>
+        <td>{{ r.metric }}</td>
+        <td style="text-align:right">{{ r.p5 }}</td>
+        <td style="text-align:right">{{ r.p25 }}</td>
+        <td style="text-align:right">{{ r.p50 }}</td>
+        <td style="text-align:right">{{ r.p75 }}</td>
+        <td style="text-align:right">{{ r.p95 }}</td>
+        <td style="text-align:right">{{ r.mean }}</td>
+        <td style="text-align:right">{{ r.std }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="muted" style="font-size:11px; margin-top:10px;">
+    Bootstrap resamples the actual per-trade return series with replacement,
+    builds {{ mc.n_iterations|fmt_int }} synthetic equity curves, and reports
+    the distribution of outcomes. The one-sided p-value is the fraction of
+    synthetic samples whose mean trade return was ≤ 0 — the probability our
+    observed edge arose from noise alone.
+  </p>
+</section>
