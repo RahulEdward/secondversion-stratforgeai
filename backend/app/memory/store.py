@@ -219,3 +219,75 @@ def load_for_prompt(project_id: Optional[str], limit: int = 8) -> str:
         parts.append(snippet)
         used += len(snippet)
     return "".join(parts)
+
+
+# ── Strategy result memory ───────────────────────────────────────────────
+
+
+def save_strategy_result(
+    strategy_name: str,
+    spec: Dict[str, Any],
+    grade: str,
+    metrics: Dict[str, Any],
+    market_regime: str,
+    *,
+    project_id: Optional[str] = None,
+) -> None:
+    """Save a strategy research result to memory for future reference.
+
+    Called by MasterAgent after research completes. Creates a structured
+    memory entry that the Architect can query in future sessions to avoid
+    repeating failures and leverage successful patterns.
+    """
+    if not project_id:
+        # Try to find the active project
+        from .. import storage as _storage
+        projects = _storage.list_projects()
+        if not projects:
+            return
+        project_id = projects[0].id
+
+    verdict = "passed" if grade in {"A+", "A", "A-", "B+", "B", "B-"} else "failed"
+    sharpe = metrics.get("sharpe", "?")
+    pf = metrics.get("profit_factor", "?")
+    n_trades = metrics.get("num_trades", "?")
+
+    # Extract indicator names from spec
+    indicators = set()
+    for group_key in ("entries", "exits"):
+        group = spec.get(group_key, {}) if isinstance(spec, dict) else {}
+        for cond_key in ("all_of", "any_of"):
+            for cond in group.get(cond_key, []):
+                if isinstance(cond, dict) and "indicator" in cond:
+                    indicators.add(cond["indicator"])
+
+    body_lines = [
+        f"**Strategy:** {strategy_name}",
+        f"**Grade:** {grade} ({verdict})",
+        f"**Regime:** {market_regime}",
+        f"**Indicators:** {', '.join(sorted(indicators)) or 'unknown'}",
+        f"**Sharpe:** {sharpe} | **PF:** {pf} | **Trades:** {n_trades}",
+    ]
+
+    if verdict == "failed":
+        body_lines.append("")
+        body_lines.append("**Failure analysis:** This combination of indicators and parameters")
+        body_lines.append(f"did not produce a viable strategy under {market_regime} regime.")
+        body_lines.append("Avoid re-testing similar configurations without structural changes.")
+    else:
+        body_lines.append("")
+        body_lines.append("**Success factors:** This configuration worked well.")
+        body_lines.append("Consider reusing this pattern for similar market conditions.")
+
+    try:
+        write_memory(
+            project_id,
+            name=f"strategy_{slugify(strategy_name)}_{grade.replace('+', 'p').replace('-', 'm')}",
+            title=f"{strategy_name} ({grade})",
+            description=f"Auto-researched strategy — {verdict}. Sharpe={sharpe}, PF={pf}",
+            body="\n".join(body_lines),
+            type="reference",
+        )
+    except Exception:
+        pass  # Non-fatal — memory is optional
+

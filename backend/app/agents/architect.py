@@ -99,11 +99,119 @@ _MOMENTUM_STRATEGY = {
     "slippage_override": 0.0005,
 }
 
+_BREAKOUT_STRATEGY = {
+    "name": "Donchian Breakout + ATR Filter",
+    "market": "crypto",
+    "entries": {
+        "all_of": [
+            {"indicator": "donchian_channel", "params": {"period": 20},
+             "field": "upper", "op": "<", "ref": "close"},
+            {"indicator": "adx", "params": {"period": 14}, "field": "adx",
+             "op": ">", "value": 18},
+        ]
+    },
+    "exits": {
+        "any_of": [
+            {"indicator": "donchian_channel", "params": {"period": 20},
+             "field": "lower", "op": ">", "ref": "close"},
+        ]
+    },
+    "stops": {
+        "stop_loss": {"type": "atr", "multiplier": 2.5, "period": 14},
+        "take_profit": {"type": "fixed_pct", "value": 0.05},
+        "trailing": {"type": "trailing_pct", "value": 0.03},
+    },
+    "sizing": {"type": "fixed_pct", "value": 0.95},
+    "fees_override": 0.001,
+    "slippage_override": 0.0005,
+}
+
+_VWAP_STRATEGY = {
+    "name": "VWAP Crossover + RSI Confirmation",
+    "market": "crypto",
+    "entries": {
+        "all_of": [
+            {"indicator": "vwap", "op": "<", "ref": "close"},
+            {"indicator": "rsi", "params": {"period": 14}, "op": "<", "value": 45},
+        ]
+    },
+    "exits": {
+        "any_of": [
+            {"indicator": "rsi", "params": {"period": 14}, "op": ">", "value": 65},
+            {"indicator": "vwap", "op": ">", "ref": "close"},
+        ]
+    },
+    "stops": {
+        "stop_loss": {"type": "atr", "multiplier": 1.5, "period": 14},
+        "take_profit": {"type": "fixed_pct", "value": 0.03},
+    },
+    "sizing": {"type": "fixed_pct", "value": 0.95},
+    "fees_override": 0.001,
+    "slippage_override": 0.0005,
+}
+
+_ICHIMOKU_STRATEGY = {
+    "name": "Ichimoku Cloud Breakout + ADX",
+    "market": "crypto",
+    "entries": {
+        "all_of": [
+            {"indicator": "ichimoku", "params": {"tenkan": 9, "kijun": 26, "senkou": 52},
+             "field": "tenkan_sen", "op": ">",
+             "ref_indicator": "ichimoku", "ref_params": {"tenkan": 9, "kijun": 26, "senkou": 52},
+             "ref_field": "kijun_sen"},
+            {"indicator": "adx", "params": {"period": 14}, "field": "adx",
+             "op": ">", "value": 20},
+        ]
+    },
+    "exits": {
+        "any_of": [
+            {"indicator": "ichimoku", "params": {"tenkan": 9, "kijun": 26, "senkou": 52},
+             "field": "tenkan_sen", "op": "<",
+             "ref_indicator": "ichimoku", "ref_params": {"tenkan": 9, "kijun": 26, "senkou": 52},
+             "ref_field": "kijun_sen"},
+        ]
+    },
+    "stops": {
+        "stop_loss": {"type": "atr", "multiplier": 2.0, "period": 14},
+        "take_profit": {"type": "fixed_pct", "value": 0.05},
+        "trailing": {"type": "trailing_pct", "value": 0.03},
+    },
+    "sizing": {"type": "fixed_pct", "value": 0.95},
+    "fees_override": 0.001,
+    "slippage_override": 0.0005,
+}
+
+_VOLEXPANSION_STRATEGY = {
+    "name": "Bollinger Squeeze Breakout",
+    "market": "crypto",
+    "entries": {
+        "all_of": [
+            {"indicator": "bollinger_bands", "params": {"period": 20, "std_dev": 2.0},
+             "field": "pct_b", "op": ">", "value": 0.95},
+            {"indicator": "rsi", "params": {"period": 14}, "op": ">", "value": 55},
+        ]
+    },
+    "exits": {
+        "any_of": [
+            {"indicator": "bollinger_bands", "params": {"period": 20, "std_dev": 2.0},
+             "field": "pct_b", "op": "<", "value": 0.5},
+            {"indicator": "rsi", "params": {"period": 14}, "op": "<", "value": 40},
+        ]
+    },
+    "stops": {
+        "stop_loss": {"type": "atr", "multiplier": 2.0, "period": 14},
+        "take_profit": {"type": "fixed_pct", "value": 0.04},
+    },
+    "sizing": {"type": "fixed_pct", "value": 0.95},
+    "fees_override": 0.001,
+    "slippage_override": 0.0005,
+}
+
 _FALLBACK_STRATEGIES = {
-    "trending": [_TREND_STRATEGY, _MOMENTUM_STRATEGY],
-    "ranging": [_MEANREV_STRATEGY, _TREND_STRATEGY],
-    "volatile": [_MOMENTUM_STRATEGY, _MEANREV_STRATEGY],
-    "unknown": [_TREND_STRATEGY, _MEANREV_STRATEGY, _MOMENTUM_STRATEGY],
+    "trending": [_TREND_STRATEGY, _MOMENTUM_STRATEGY, _ICHIMOKU_STRATEGY, _VWAP_STRATEGY],
+    "ranging":  [_MEANREV_STRATEGY, _BREAKOUT_STRATEGY, _VWAP_STRATEGY, _VOLEXPANSION_STRATEGY],
+    "volatile": [_MOMENTUM_STRATEGY, _VOLEXPANSION_STRATEGY, _BREAKOUT_STRATEGY, _MEANREV_STRATEGY],
+    "unknown":  [_TREND_STRATEGY, _MEANREV_STRATEGY, _MOMENTUM_STRATEGY, _BREAKOUT_STRATEGY, _VWAP_STRATEGY],
 }
 
 

@@ -6,7 +6,7 @@
   <br />
   <h1>🚀 StratForge AI</h1>
   <p><strong>Autonomous Multi-Agent Trading Strategy Research Platform</strong></p>
-  <p>Design, Test, Optimize, and Validate trading strategies with zero code using a Multi-Agent LLM architecture.</p>
+  <p>Design, Test, Optimize, and Validate trading strategies with zero code using an 8-Agent AI architecture.</p>
 </div>
 
 ---
@@ -15,13 +15,13 @@
 
 StratForge AI is a desktop application where you simply describe what you want — *"Build me a profitable intraday strategy"* — and the AI autonomously handles the rest.
 
-- 🧠 **Autonomous Multi-Agent Loop:** Master, Analyst, Architect, Backtester, and Evaluator agents work together to research strategies.
-- 🧩 **Pre-built Templates Library:** Kickstart your research with built-in templates like VWAP Breakout, Dual SuperTrend, and MACD Crossover.
-- 🎨 **Sleek UI with Dark/Light Mode:** High-contrast, premium interface with seamless Theme Toggling.
-- 📊 **Visual Progress Tracker:** Real-time Stepper tracking the Multi-Agent loop (Data Analyst ➔ Architect ➔ Backtester ➔ Evaluator).
-- 🛠️ **Smart Alerts & Auto-Fix:** Intelligent error catching with "Fix this automatically" capabilities.
-- 📑 **Comprehensive Reporting:** Automated generation of HTML and PDF reports detailing Walk-Forward, Monte Carlo, and Backtest results.
-- 📤 **One-Click Share:** Easily share your profitable strategy reports to Telegram or Discord.
+- 🧠 **8-Agent Autonomous Loop:** IntentParser, Planner, Architect, Critic, Evolver, Backtester, Analyst, and MasterAgent work together to research strategies.
+- 🧬 **Strategy Evolution & Critic Analysis:** Built-in genetic algorithms (mutation, crossover) and a harsh Critic Agent to automatically prevent curve-fitting and overfitting.
+- 🧩 **7 Strategy Template Families:** Kickstart your research with built-in templates like VWAP Breakout, Dual SuperTrend, MACD Crossover, Ichimoku Cloud, and more.
+- 📖 **Pro-Level Documentation:** Built-in comprehensive guide covering the technical depths of Walk-Forward Efficiency (WFE), Monte Carlo Survival Rates, and the 8-stage AI loop.
+- 🎨 **Sleek UI with Visual Progress:** Real-time 8-step Stepper tracking the Multi-Agent loop with live performance metrics and dynamic gradients.
+- 📑 **Comprehensive Reporting:** Automated generation of HTML and PDF reports detailing institutional-grade validation metrics.
+- 📤 **Deployment Ready:** Export passing strategies directly to native **TradingView Pine Script v5** or generate formatted **Telegram/Discord signals** with one click.
 
 ---
 
@@ -31,39 +31,45 @@ StratForge AI is a desktop application where you simply describe what you want �
 graph TD
     UI[Electron Desktop App <br/> React + Vite] <--> API[FastAPI Backend <br/> Python]
     
-    subgraph Multi-Agent System
-        Master[MasterAgent] --> Analyst[DataAnalyst]
+    subgraph "8-Stage Multi-Agent Engine"
+        Master[MasterAgent] --> Intent[IntentParser]
+        Master --> Analyst[DataAnalyst]
+        Master --> Planner[PlannerAgent]
         Master --> Architect[StrategyArchitect]
         Master --> Backtester[Backtester]
-        Master --> Evaluator[Evaluator]
+        Master --> Critic[CriticAgent]
+        Master --> Evolver[StrategyEvolver]
     end
 
     API --> Master
     
-    subgraph Skills Registry
-        Indicators[65+ Indicators]
-        BT[Backtest + Optimizer]
-        Reports[HTML+PDF Reports]
-        DB[Library & DB]
+    subgraph Validation & Export
+        WFE[Walk-Forward Efficiency]
+        MC[Monte Carlo Simulation]
+        Pine[Pine Script v5 Export]
+        Signal[Signal Generation]
     end
 
-    Backtester --> BT
-    Architect --> Indicators
+    Backtester --> WFE
+    Backtester --> MC
+    Critic --> Evolver
+    Master --> Pine
 ```
 
 ---
 
 ## 🤖 The AI Team
 
-| Agent | LLM? | Speed | Role |
-|-------|------|-------|------|
-| **MasterAgent** | No | — | Orchestrates the full research loop |
-| **DataAnalyst** | No | ~200ms | Computes indicators, classifies regime |
-| **StrategyArchitect** | Yes | ~3s | Designs strategy variants from data profile |
-| **Backtester** | No | ~5-15s | Runs full pipeline per variant |
-| **Evaluator** | No | instant | Checks vetos, builds improvement feedback |
-
-**Flow:** User Prompt → Master → Analyst → Architect → Backtester → Evaluator → (iterate if failing) → Report + Save
+| Agent | Role | Focus |
+|-------|------|-------|
+| **IntentParser** | Translates natural language requests into strict JSON schemas | Market, Timeframe, Style, Risk |
+| **DataAnalyst** | Computes baseline indicators and classifies market regime | Trending, Ranging, Volatile |
+| **PlannerAgent** | Selects logic families and strategy topology | Framework Design |
+| **StrategyArchitect** | Builds 6-10 structurally diverse, non-redundant strategy variants | Technical Indicators, Risk Constraints |
+| **Backtester** | Vectorized grid search and historical simulation | PnL, Drawdowns, Trade Execution |
+| **CriticAgent** | Aggressive institutional stress-testing and vetoing | Overfitting detection, R:R enforcing |
+| **StrategyEvolver** | Applies genetic algorithms (Crossover, Mutation, Elitism) | Strategy optimization over 5 iterations |
+| **MasterAgent** | Orchestrates the entire lifecycle and compiles final results | Overall workflow control |
 
 ---
 
@@ -74,21 +80,8 @@ Strategies are rigorously stress-tested and graded **A+ to F** with hard veto ga
 - **Minimum trades:** ≥ 100
 - **Max drawdown:** > -50%
 - **Profit factor:** > 1.0
-- **Walk-forward efficiency:** ≥ 0.5
-- **Monte Carlo survival:** ≥ 70%
-
----
-
-## 🔌 Skills System (Plugin Architecture)
-
-StratForge uses a robust plugin architecture. Adding a new skill is as simple as dropping a folder into `backend/app/skills/`. No core code changes required!
-
-- `indicator_skill/`
-- `backtest_skill/`
-- `report_skill/`
-- `library_skill/`
-- `dataset_skill/`
-- `agent_skill/`
+- **Walk-forward efficiency (WFE):** ≥ 0.5 *(Ensures out-of-sample robustness)*
+- **Monte Carlo survival:** ≥ 70% *(Simulates risk of ruin via trade reshuffling)*
 
 ---
 
@@ -129,11 +122,11 @@ This starts both:
 
 ## 🧪 Quick Test
 
-Open a new session in the app, click **Templates Library** under the `More` menu, or type:
+Open a new session in the app and type:
 
-> *"Build me a profitable trading strategy on this data"*
+> *"Build an aggressive intraday momentum strategy for XAUUSD 5m charts. Keep the maximum drawdown below 15%."*
 
-The AI will autonomously research, test, iterate, and deliver the best strategy with a full report!
+Watch as the 8-stage pipeline parses your intent, architects variants, aggressively stress-tests them with Walk-Forward and Monte Carlo analysis, and evolves them until a profitable edge is found!
 
 ---
 

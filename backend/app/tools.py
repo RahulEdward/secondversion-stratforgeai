@@ -600,12 +600,48 @@ def _pipeline_tool_schemas() -> List[Dict[str, Any]]:
     ]
 
 
+def _export_tool_schemas() -> List[Dict[str, Any]]:
+    """Strategy export tools — Pine Script, signal messages."""
+    return [
+        {
+            "name": "export_pine_script",
+            "description": (
+                "Export a saved strategy to TradingView Pine Script v5. "
+                "Pass either `strategy_id` (from the library) or "
+                "`backtest_id` (from a recent pipeline run)."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "strategy_id": {"type": "string"},
+                    "backtest_id": {"type": "string"},
+                },
+            },
+        },
+        {
+            "name": "export_signal_message",
+            "description": (
+                "Format a strategy as a Telegram/Discord signal message "
+                "with key metrics, entry/exit summary, and risk management. "
+                "Pass `backtest_id` or `strategy_id`."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "strategy_id": {"type": "string"},
+                    "backtest_id": {"type": "string"},
+                },
+            },
+        },
+    ]
+
+
 def all_tools() -> List[Dict[str, Any]]:
     """Aggregate every tool the orchestrator exposes to the LLM.
 
     Indicators (Phase 3) + Phase 7 backtest/optimise/validate/score +
     Phase 7+ pipeline single-tool + Phase 8 report renderer + Phase 9
-    library + agent system tools (shell/file/python from Phase 6).
+    library + export tools + agent system tools.
     """
     from .agent_tools import tool_schemas as agent_tool_schemas
 
@@ -615,5 +651,6 @@ def all_tools() -> List[Dict[str, Any]]:
         + _pipeline_tool_schemas()
         + _report_tool_schemas()
         + _library_tool_schemas()
+        + _export_tool_schemas()
         + agent_tool_schemas()
     )

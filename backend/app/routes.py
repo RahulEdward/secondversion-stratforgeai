@@ -759,3 +759,39 @@ def chatgpt_auth_signout() -> None:
     from . import oauth_callback_server
 
     oauth_callback_server.clear_tokens()
+
+
+# ── Strategy Export endpoints ─────────────────────────────────────────────
+
+
+@router.post("/strategies/export/pine")
+def export_pine_script(body: dict) -> dict:
+    """Export a strategy to TradingView Pine Script v5."""
+    from .tool_exec import _resolve_export_spec
+    from .export.pine_script import to_pine_script
+
+    spec, _, _ = _resolve_export_spec(body)
+    if spec is None:
+        raise HTTPException(400, "Provide strategy_id or backtest_id")
+    try:
+        code = to_pine_script(spec)
+        return {"ok": True, "pine_script": code, "version": 5}
+    except Exception as exc:
+        raise HTTPException(500, f"Export failed: {exc}")
+
+
+@router.post("/strategies/export/signal")
+def export_signal_message(body: dict) -> dict:
+    """Format a strategy as a Telegram/Discord signal."""
+    from .tool_exec import _resolve_export_spec
+    from .export.telegram_signal import format_signal
+
+    spec, metrics, grade = _resolve_export_spec(body)
+    if spec is None:
+        raise HTTPException(400, "Provide strategy_id or backtest_id")
+    try:
+        msg = format_signal(spec, metrics or {}, grade=grade or "")
+        return {"ok": True, "message": msg}
+    except Exception as exc:
+        raise HTTPException(500, f"Export failed: {exc}")
+

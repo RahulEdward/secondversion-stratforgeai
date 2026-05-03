@@ -48,6 +48,9 @@ _LIBRARY_TOOLS = {"save_strategy", "load_strategy", "list_strategies"}
 # Phase 7+ token-saver: one tool, full pipeline, single LLM round-trip.
 _PIPELINE_TOOLS = {"run_full_pipeline"}
 
+# Export tools — Pine Script, signal messages.
+_EXPORT_TOOLS = {"export_pine_script", "export_signal_message"}
+
 
 def _round_floats(obj: Any) -> Any:
     """Walk a JSON-shaped payload and round every float to 2 decimals.
@@ -99,6 +102,8 @@ async def run_tool(
             return await _run_library_tool(name, input_)
         if name in _PIPELINE_TOOLS:
             return await _run_full_pipeline(input_)
+        if name in _EXPORT_TOOLS:
+            return await asyncio.to_thread(_run_export_tool, name, input_)
 
         from .agent_tools import AGENT_TOOLS, run_agent_tool
         if name in AGENT_TOOLS:
@@ -1203,3 +1208,59 @@ def _read_artifact(subdir: str, file_id: Optional[str]) -> Optional[Dict[str, An
         return json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return None
+
+
+# ─── Export tools ───────────────────────────────────────────────────────
+
+
+def _run_export_tool(name: str, input_: Dict[str, Any]) -> Dict[str, Any]:
+    """Dispatch export_pine_script / export_signal_message."""
+    spec, metrics, grade = _resolve_export_spec(input_)
+    if spec is None:
+        return _tool_result_err(
+            "Provide `strategy_id` or `backtest_id` to export."
+        )
+
+    if name == "export_pine_script":
+        from .export.pine_script import to_pine_script
+        try:
+            code = to_pine_script(spec)
+            return _tool_result_ok({"pine_script": code, "version": 5})
+        except Exception as exc:
+            return _tool_result_err(f"Pine Script export failed: {exc}")
+
+    if name == "export_signal_message":
+        from .export.telegram_signal import format_signal
+        try:
+            msg = format_signal(spec, metrics or {}, grade=grade or "")
+            return _tool_result_ok({"message": msg})
+        except Exception as exc:
+            return _tool_result_err(f"Signal export failed: {exc}")
+
+    return _tool_result_err(f"Unrouted export tool: {name}")
+
+
+def _resolve_export_spec(
+    input_: Dict[str, Any],
+) -> tuple:
+    """Resolve a strategy spec from strategy_id or backtest_id."""
+    sid = input_.get("strategy_id")
+    bid = input_.get("backtest_id")
+
+    if isinstance(sid, str) and sid:
+        for project in storage.list_projects():
+            strategies = storage.list_strategies(project.id) or []
+            for s in strategies:
+                if s.id == sid:
+                    return s.spec, {}, s.grade
+        return None, None, None
+
+    if isinstance(bid, str) and bid:
+        bt = _read_artifact("backtests", bid)
+        if bt is None:
+            return None, None, None
+        spec = bt.get("spec_used") or bt.get("strategy_spec") or {}
+        metrics = bt.get("metrics") or {}
+        return spec, metrics, None
+
+    return None, None, None
