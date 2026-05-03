@@ -1021,7 +1021,7 @@ def _do_run_full_pipeline(input_: Dict[str, Any]) -> Dict[str, Any]:
                 min_trades=int(_pick(do_optimize, "min_trades", default=20)),
                 max_dd_floor=float(_pick(do_optimize, "max_dd_floor", default=-0.50)),
                 top_n=int(_pick(do_optimize, "top_n", default=5)),
-                max_combinations=int(_pick(do_optimize, "max_combinations", default=500)),
+                max_combinations=max(100, int(_pick(do_optimize, "max_combinations", default=500))),
                 init_cash=init_cash,
                 persist=True,
             )

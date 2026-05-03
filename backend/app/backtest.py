@@ -215,7 +215,7 @@ def _stop_args(
             kw["sl_trail"] = True
 
     if stops.time_stop_bars is not None:
-        kw["max_duration"] = int(stops.time_stop_bars)
+        kw["td_stop"] = int(stops.time_stop_bars)
 
     return kw
 

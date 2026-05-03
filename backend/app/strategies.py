@@ -279,6 +279,8 @@ def _eval_indicator(
         )
     if out.shape[1] == 1:
         return out.iloc[:, 0].astype(float)
+    if name in out.columns:
+        return out[name].astype(float)
     raise ValueError(
         f"Indicator '{name}' returns {list(out.columns)}; you must set `field` to pick one."
     )
