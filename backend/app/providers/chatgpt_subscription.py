@@ -78,6 +78,7 @@ class ChatGPTSubscriptionProvider(Provider):
         tools: Optional[List[Dict[str, Any]]] = None,
         model: Optional[str] = None,
         system: Optional[str] = None,
+        session_id: Optional[str] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         access_token = await self.current_token()
         if not access_token:

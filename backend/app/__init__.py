@@ -40,4 +40,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(router, prefix="/api")
+
+    @app.on_event("shutdown")
+    def _cleanup_processes():
+        """Kill all managed background processes on server shutdown."""
+        try:
+            from .process_manager import get_manager
+            count = get_manager().stop_all()
+            if count:
+                logger.info("Process manager: stopped %d managed process(es)", count)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Process cleanup failed: %s", exc)
+
     return app

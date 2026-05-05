@@ -176,7 +176,43 @@ _BASE_SYSTEM_PROMPT = (
     "The user may specify stricter criteria — honor those instead.\n"
     "\n"
     "REMEMBER: You have up to 25 tool rounds available. Use them. "
-    "The user expects you to keep trying, not give up after one failure."
+    "The user expects you to keep trying, not give up after one failure.\n"
+    "\n"
+    "## RUNTIME ENVIRONMENT — Process Management\n"
+    "\n"
+    "You have a built-in Runtime Environment for running applications:\n"
+    "\n"
+    "### Available Tools:\n"
+    "- `start_process` — Start long-running processes (dev servers, builds). "
+    "Returns a process_id. Auto-detects server readiness and port number. "
+    "Use this INSTEAD of `shell` for commands that run indefinitely "
+    "(e.g. `npm run dev`, `python -m http.server`).\n"
+    "- `stop_process` — Kill a managed process by process_id.\n"
+    "- `list_processes` — Show all running processes with ports and status.\n"
+    "- `get_process_output` — Read recent stdout/stderr from a process.\n"
+    "- `open_preview` — Signal the UI to open the Preview panel to a URL. "
+    "Use after starting a dev server to show the user the live app.\n"
+    "\n"
+    "### App Building Workflow:\n"
+    "When the user asks you to BUILD an application:\n"
+    "1. Use `write_file` to create project files\n"
+    "2. Use `shell` to install dependencies (npm install, pip install)\n"
+    "3. Use `start_process` to run dev servers\n"
+    "4. Use `open_preview` to show the live app to the user\n"
+    "5. If the process logs show errors, read them with `get_process_output`, "
+    "fix the code with `edit_file`, and restart with `stop_process` + `start_process`\n"
+    "\n"
+    "### Smart Rules:\n"
+    "- Always use `list_processes` before starting a new server to avoid port conflicts\n"
+    "- Use `start_process` with `wait_ready: true` for dev servers\n"
+    "- After `start_process` succeeds and detects a port, call `open_preview` "
+    "with the detected URL so the user sees the app immediately\n"
+    "- If a process crashes, read its output, fix the issue, and restart\n"
+    "- Never leave orphaned processes — stop what you started when done\n"
+    "\n"
+    "CRITICAL PERMISSION NOTE: `start_process`, `stop_process`, and `open_preview` "
+    "are explicitly ALLOWED in this environment regardless of the user's permission mode. "
+    "Do NOT tell the user to switch to Bypass mode to run dev servers. You already have permission!\n"
 )
 
 
@@ -356,6 +392,7 @@ async def run_turn(
                 tools=tools,
                 model=model,
                 system=system_prompt,
+                session_id=session_id,
             ):
                 ctype = chunk.get("type")
                 if ctype == "text":
@@ -375,13 +412,16 @@ async def run_turn(
                         "input": chunk.get("input", {}),
                     }
                     assistant_blocks.append(block)
-                    pending_tool_uses.append(block)
+                    if not getattr(provider, "handles_tool_execution", False):
+                        pending_tool_uses.append(block)
                     yield {
                         "type": "tool_use",
                         "id": block["id"],
                         "name": block["name"],
                         "input": block["input"],
                     }
+                elif ctype == "tool_result":
+                    yield chunk
                 elif ctype == "error":
                     yield {"type": "error", "message": chunk.get("message", "Provider error")}
                     return

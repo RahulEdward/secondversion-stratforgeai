@@ -47,9 +47,15 @@ _EDIT_TOOLS = {"write_file", "edit_file", "create_dir"}
 # blocks because the user said "edits OK, but no shell"; only bypass runs.
 _HEAVY_TOOLS = {"shell", "run_python", "delete_path"}
 
+# Process management tools — same permission level as heavy tools.
+_PROCESS_TOOLS = {"start_process", "stop_process", "list_processes", "get_process_output"}
+
+# UI signal tools — these are lightweight and safe in any mode.
+_SIGNAL_TOOLS = {"open_preview"}
+
 # Tool name set the orchestrator can route here.
 AGENT_TOOLS: set[str] = (
-    _READ_ONLY_TOOLS | _EDIT_TOOLS | _HEAVY_TOOLS
+    _READ_ONLY_TOOLS | _EDIT_TOOLS | _HEAVY_TOOLS | _PROCESS_TOOLS | _SIGNAL_TOOLS
 )
 
 
@@ -148,6 +154,71 @@ def tool_schemas() -> List[Dict[str, Any]]:
             },
         },
         {
+            "name": "start_process",
+            "description": (
+                "Start a long-running process (dev server, build watcher, etc.) "
+                "in the background. Returns a process ID. The system auto-detects "
+                "when the server is ready and which port it's listening on. "
+                "Use this instead of `shell` for commands that run indefinitely."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "The command to run (e.g. 'npm run dev', 'python -m http.server 8080')."},
+                    "cwd": {"type": "string", "description": "Working directory (relative to agent workspace, or absolute)."},
+                    "label": {"type": "string", "description": "Human-readable label (e.g. 'Frontend Dev Server')."},
+                    "wait_ready": {"type": "boolean", "default": True, "description": "Wait up to 30s for the server to signal readiness."},
+                },
+                "required": ["command"],
+            },
+        },
+        {
+            "name": "stop_process",
+            "description": "Stop a managed background process by its ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "process_id": {"type": "string", "description": "The proc_XXXX ID returned by start_process."},
+                },
+                "required": ["process_id"],
+            },
+        },
+        {
+            "name": "list_processes",
+            "description": "List all managed background processes with their status, ports, and uptime.",
+            "input_schema": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+        {
+            "name": "get_process_output",
+            "description": "Get recent stdout/stderr output from a managed process (last N lines).",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "process_id": {"type": "string"},
+                    "last_n": {"type": "integer", "default": 50, "description": "Number of recent lines to return."},
+                },
+                "required": ["process_id"],
+            },
+        },
+        {
+            "name": "open_preview",
+            "description": (
+                "Signal the desktop app to open the Preview panel to a specific URL. "
+                "Use after starting a dev server to show the user the live app."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "The URL to open (e.g. 'http://localhost:3000')."},
+                    "label": {"type": "string", "description": "Optional label for the preview tab."},
+                },
+                "required": ["url"],
+            },
+        },
+        {
             "name": "delete_path",
             "description": "Delete a file or empty directory. Refuses to delete non-empty dirs unless recursive=true.",
             "input_schema": {
@@ -168,19 +239,22 @@ def _gate(tool: str, mode: str) -> Optional[str]:
     """Return an error message if the tool is blocked in this mode, else None."""
     if mode == "bypass":
         return None
+    # Signal tools are always allowed — they don't mutate anything.
+    if tool in _SIGNAL_TOOLS:
+        return None
+    # list_processes is read-only.
+    if tool == "list_processes":
+        return None
     if mode == "plan":
-        if tool in _READ_ONLY_TOOLS:
+        if tool in _READ_ONLY_TOOLS or tool == "get_process_output":
             return None
         return f"Plan mode is read-only — `{tool}` is blocked. Switch to Accept edits or Bypass."
     if mode == "accept-edits":
-        if tool in _READ_ONLY_TOOLS or tool in _EDIT_TOOLS:
+        if tool in _READ_ONLY_TOOLS or tool in _EDIT_TOOLS or tool in _PROCESS_TOOLS:
             return None
         return f"Accept-edits mode does not run shell/python. Switch to Bypass to run `{tool}`."
     if mode == "ask":
-        # The richer "ask user inline" flow lands later; for now treat ask
-        # like accept-edits so the UI is usable end-to-end. The chat will
-        # see a clear toast/banner about the active mode.
-        if tool in _READ_ONLY_TOOLS or tool in _EDIT_TOOLS:
+        if tool in _READ_ONLY_TOOLS or tool in _EDIT_TOOLS or tool in _PROCESS_TOOLS:
             return None
         return f"Ask mode requires confirmation for `{tool}`. Switch to Bypass to allow shell/python."
     return None
@@ -236,6 +310,17 @@ async def run_agent_tool(
             return await asyncio.to_thread(_do_create_dir, input_, permission_mode)
         if name == "delete_path":
             return await asyncio.to_thread(_do_delete_path, input_, permission_mode)
+        # Process management tools
+        if name == "start_process":
+            return await asyncio.to_thread(_do_start_process, input_)
+        if name == "stop_process":
+            return await asyncio.to_thread(_do_stop_process, input_)
+        if name == "list_processes":
+            return await asyncio.to_thread(_do_list_processes, input_)
+        if name == "get_process_output":
+            return await asyncio.to_thread(_do_get_process_output, input_)
+        if name == "open_preview":
+            return _do_open_preview(input_)
     except Exception as exc:  # noqa: BLE001 — boundary
         return {"ok": False, "error": f"Tool crashed: {exc.__class__.__name__}: {exc}"}
     return {"ok": False, "error": f"Unknown agent tool: {name}"}
@@ -469,6 +554,103 @@ def _do_delete_path(input_: Dict[str, Any], mode: str) -> Dict[str, Any]:
     except Exception as exc:
         return {"ok": False, "error": f"Delete failed: {exc}"}
     return {"ok": True, "output": {"path": str(path), "deleted": True}}
+
+
+# ── Process management tools ───────────────────────────────────────────
+
+def _do_start_process(input_: Dict[str, Any]) -> Dict[str, Any]:
+    cmd = input_.get("command")
+    if not isinstance(cmd, str) or not cmd.strip():
+        return {"ok": False, "error": "Missing required `command`"}
+    cwd_raw = input_.get("cwd")
+    cwd = str(resolve_agent_path(cwd_raw)) if isinstance(cwd_raw, str) and cwd_raw else None
+    label = input_.get("label")
+    wait = input_.get("wait_ready", True)
+
+    from .process_manager import get_manager
+    mgr = get_manager()
+
+    if wait:
+        mp = mgr.start_and_wait(cmd, cwd=cwd, label=label, timeout=30)
+    else:
+        mp = mgr.start(cmd, cwd=cwd, label=label)
+
+    result = mp.to_dict()
+    # Include a few initial output lines for context.
+    result["recent_output"] = mp.get_output(last_n=20)
+
+    # If a port was detected, include a preview hint.
+    if mp.detected_port:
+        result["preview_url"] = f"http://localhost:{mp.detected_port}"
+
+    return {"ok": True, "output": result}
+
+
+def _do_stop_process(input_: Dict[str, Any]) -> Dict[str, Any]:
+    proc_id = input_.get("process_id")
+    if not isinstance(proc_id, str) or not proc_id:
+        return {"ok": False, "error": "Missing required `process_id`"}
+
+    from .process_manager import get_manager
+    mgr = get_manager()
+
+    if not mgr.stop(proc_id):
+        return {"ok": False, "error": f"Process {proc_id} not found"}
+    return {"ok": True, "output": {"process_id": proc_id, "stopped": True}}
+
+
+def _do_list_processes(input_: Dict[str, Any]) -> Dict[str, Any]:
+    from .process_manager import get_manager
+    mgr = get_manager()
+    mgr.cleanup_dead()  # remove finished processes
+    procs = mgr.list_all()
+    return {
+        "ok": True,
+        "output": {
+            "count": len(procs),
+            "processes": [p.to_dict() for p in procs],
+        },
+    }
+
+
+def _do_get_process_output(input_: Dict[str, Any]) -> Dict[str, Any]:
+    proc_id = input_.get("process_id")
+    if not isinstance(proc_id, str) or not proc_id:
+        return {"ok": False, "error": "Missing required `process_id`"}
+    last_n = int(input_.get("last_n", 50))
+
+    from .process_manager import get_manager
+    mgr = get_manager()
+
+    mp = mgr.get(proc_id)
+    if mp is None:
+        return {"ok": False, "error": f"Process {proc_id} not found"}
+
+    return {
+        "ok": True,
+        "output": {
+            "process_id": proc_id,
+            "alive": mp.alive,
+            "ready": mp.ready,
+            "lines": mp.get_output(last_n=last_n),
+        },
+    }
+
+
+def _do_open_preview(input_: Dict[str, Any]) -> Dict[str, Any]:
+    """Signal tool — returns a payload the UI intercepts to open preview."""
+    url = input_.get("url")
+    if not isinstance(url, str) or not url.strip():
+        return {"ok": False, "error": "Missing required `url`"}
+    label = input_.get("label", "")
+    return {
+        "ok": True,
+        "output": {
+            "action": "open_preview",
+            "url": url.strip(),
+            "label": label,
+        },
+    }
 
 
 # Silence unused warnings for shlex (kept for future cmd parsing).

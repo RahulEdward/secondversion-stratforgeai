@@ -25,6 +25,8 @@ const DESCRIPTIONS: Record<string, string> = {
     'Run open-source models locally via Ollama. No API key — just a base URL.',
   'chatgpt-subscription':
     'Sign in with your ChatGPT Plus/Pro/Team subscription to access GPT-5 models at no extra API cost.',
+  'claude-cli':
+    'Use your Claude Code CLI login (Free/Pro/Max plan) to access Claude models at no extra API cost. Requires the Claude CLI installed and logged in.',
 };
 
 export default function ProvidersPanel() {

@@ -1014,15 +1014,14 @@ def _do_run_full_pipeline(input_: Dict[str, Any]) -> Dict[str, Any]:
         )
         if not isinstance(grid, dict) or not grid:
             return _tool_result_err(
-                "When `optimize` is set, supply a `grid` mapping "
-                "{dotted_path: [values]} (or pass `optimize_grid` at top level)."
+                "When `optimize` is true, you MUST supply `optimize_grid` containing a map of {dotted_path: [values]}."
             )
         from .optimize import optimize as _optimize
 
         try:
             opt_res = _optimize(
                 dataset_id, base_spec, grid,
-                score_metric=str(_pick(do_optimize, "score_metric", default="sharpe")),
+                score_metric=str(input_.get("optimize_score_metric") or _pick(do_optimize, "score_metric", default="sharpe")),
                 min_trades=int(_pick(do_optimize, "min_trades", default=20)),
                 max_dd_floor=float(_pick(do_optimize, "max_dd_floor", default=-0.50)),
                 top_n=int(_pick(do_optimize, "top_n", default=5)),

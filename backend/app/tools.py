@@ -546,31 +546,20 @@ def _pipeline_tool_schemas() -> List[Dict[str, Any]]:
                         "is used for walk-forward + Monte-Carlo + report."
                     ),
                     "optimize": {
-                        "oneOf": [
-                            {"type": "boolean"},
-                            {
-                                "type": "object",
-                                "properties": {
-                                    "grid": {"type": "object"},
-                                    "score_metric": {"type": "string"},
-                                    "min_trades": {"type": "integer"},
-                                    "max_dd_floor": {"type": "number"},
-                                    "top_n": {"type": "integer"},
-                                    "max_combinations": {"type": "integer"},
-                                },
-                            },
-                        ],
-                        "description": (
-                            "Pass true with `optimize_grid` at top level, OR "
-                            "pass an object containing `grid` and overrides."
-                        ),
+                        "type": "boolean",
+                        "description": "Set to true to run grid optimization. If true, you MUST also provide `optimize_grid`.",
                     },
                     "optimize_grid": {
                         "type": "object",
                         "description": (
-                            "Convenience top-level grid (used when `optimize` "
-                            "is true). Map of `dotted.path → [values]`."
+                            "REQUIRED if `optimize` is true. Map of `dotted.path → [values]` to sweep. "
+                            "Example: {\"entries.all_of.0.params.period\": [10, 14, 21]}"
                         ),
+                    },
+                    "optimize_score_metric": {
+                        "type": "string",
+                        "enum": ["sharpe", "sortino", "calmar", "total_return", "profit_factor"],
+                        "description": "Optional target metric when `optimize` is true (default: sharpe)."
                     },
                     "walk_forward": {
                         "type": "boolean",

@@ -20,13 +20,16 @@ const PRESETS = [
 export default function PreviewPanel() {
   const reportId = useAppStore((s) => s.activeReportId);
   const reportTitle = useAppStore((s) => s.activeReportTitle);
+  const previewUrl = useAppStore((s) => s.previewUrl);
 
   // If there is an active report, the user almost certainly wants to see
   // that. Otherwise default to their own UI so the pane works like
   // Claude Code's preview out of the box.
-  const initial = reportId
-    ? `${BACKEND}/api/reports/${reportId}`
-    : PRESETS[0].url;
+  const initial = previewUrl
+    ? previewUrl
+    : reportId
+      ? `${BACKEND}/api/reports/${reportId}`
+      : PRESETS[0].url;
 
   const [url, setUrl] = useState(initial);
   const [draft, setDraft] = useState(initial);
@@ -46,6 +49,16 @@ export default function PreviewPanel() {
       setHIdx((i) => i + 1);
     }
   }, [reportId]);
+
+  // Navigate to AI-requested preview URL.
+  useEffect(() => {
+    if (previewUrl) {
+      setUrl(previewUrl);
+      setDraft(previewUrl);
+      setHistory((h) => [...h, previewUrl]);
+      setHIdx((i) => i + 1);
+    }
+  }, [previewUrl]);
 
   const navigate = (next: string) => {
     if (!next || next === url) return;

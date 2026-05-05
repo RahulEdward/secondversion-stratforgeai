@@ -46,6 +46,7 @@ export type RightPaneMode =
   | 'terminal'
   | 'files'
   | 'tasks'
+  | 'runtime'
   | null;
 
 export interface TaskItem {
@@ -93,6 +94,8 @@ interface AppStore {
   artifactsWidth: number;
   /** In-memory task list per session (Phase 9.5 — Plan / Tasks). */
   tasksBySession: Record<string, TaskItem[]>;
+  /** URL the AI has asked us to preview via `open_preview` tool. */
+  previewUrl: string | null;
   theme: Theme;
   askPermissions: boolean;
   permissionMode: PermissionMode;
@@ -143,6 +146,7 @@ interface AppStore {
   setArtifactsOpen: (open: boolean) => void;
   setActiveReport: (id: string | null, title?: string | null) => void;
   setRightPaneMode: (mode: RightPaneMode) => void;
+  setPreviewUrl: (url: string | null) => void;
   setSidebarWidth: (w: number) => void;
   setArtifactsWidth: (w: number) => void;
   // Tasks (Plan / Tasks panel)
@@ -218,6 +222,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     return Number.isFinite(v) && v >= 320 && v <= 900 ? v : 440;
   })(),
   tasksBySession: {},
+  previewUrl: null,
   theme: 'dark',
   askPermissions: true,
   permissionMode: 'accept-edits',
@@ -461,6 +466,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setActiveReport: (id, title = null) =>
     set({ activeReportId: id, activeReportTitle: title, artifactsOpen: id !== null }),
   setRightPaneMode: (mode) => set({ rightPaneMode: mode, artifactsOpen: mode !== null || get().activeReportId !== null }),
+  setPreviewUrl: (url) => {
+    if (url) {
+      set({ previewUrl: url, rightPaneMode: 'preview', artifactsOpen: true });
+    } else {
+      set({ previewUrl: null });
+    }
+  },
   setSidebarWidth: (w) => {
     const clamped = Math.max(220, Math.min(600, Math.round(w)));
     if (typeof window !== 'undefined') {
@@ -642,6 +654,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } catch { /* never block send on intent parsing */ }
     // -------------------------------------------------------------------
 
+    // Auto-rename session if it's the first message
+    const currentMsgs = get().messagesBySession[sessionId] ?? [];
+    if (currentMsgs.length === 0) {
+      const isVoice = text.startsWith('🎤 ');
+      let cleanText = isVoice ? text.replace('🎤 ', '') : text;
+      cleanText = cleanText.replace(/```[\s\S]*?```/g, '').trim();
+      if (!cleanText && text) cleanText = "Code snippet";
+      const newTitle = cleanText.length > 35 ? cleanText.slice(0, 35) + '...' : cleanText;
+      if (newTitle) {
+        get().renameSession(sessionId, newTitle).catch(() => {});
+      }
+    }
+
     const stream = openSessionStream(sessionId);
     set((s) => ({
       streamingBySession: { ...s.streamingBySession, [sessionId]: true },
@@ -683,6 +708,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
               activeReportTitle: title,
               artifactsOpen: true,
             });
+          }
+          // Auto-open preview when AI calls `open_preview` tool
+          if (out.action === 'open_preview' && typeof out.url === 'string') {
+            get().setPreviewUrl(out.url as string);
+          }
+          // Auto-open preview when AI starts a process with a detected port
+          if (typeof out.preview_url === 'string') {
+            get().setPreviewUrl(out.preview_url as string);
           }
         }
       } else if (frame.type === 'message') {

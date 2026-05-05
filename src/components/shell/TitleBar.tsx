@@ -5,7 +5,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import RightPaneMenu from './RightPaneMenu';
 
 interface Props {
   onToggleSidebar?: () => void;
@@ -73,13 +72,6 @@ export default function TitleBar({ onToggleSidebar, sidebarOpen }: Props) {
         <span className="text-[10px] font-medium bg-bg-hover px-1.5 py-0.5 rounded-md border border-border">
           v0.1.0
         </span>
-      </div>
-      {/* Claude Code-style right-pane mode menu (Preview / Diff / Terminal /
-          Files / Tasks / Plan). Sits before the native window controls. */}
-      {/* Claude Code-style right-pane mode menu (Preview / Diff / Terminal /
-          Files / Tasks / Plan). Sits before the native window controls. */}
-      <div className="flex items-center gap-1">
-        <RightPaneMenu />
       </div>
     </div>
   );

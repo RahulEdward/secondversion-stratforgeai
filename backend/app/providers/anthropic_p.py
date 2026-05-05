@@ -1,7 +1,7 @@
 """Anthropic provider — Claude models via API key."""
 from __future__ import annotations
 
-from typing import List
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 import httpx
 
@@ -29,6 +29,16 @@ class AnthropicProvider(Provider):
 
     def has_credential(self) -> bool:
         return secrets.has_key(PROVIDER_NAME)
+
+    async def stream_chat(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        model: Optional[str] = None,
+        system: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> AsyncIterator[Dict[str, Any]]:
+        yield {"type": "error", "message": "Not implemented"}
 
     async def list_models(self) -> List[ModelInfo]:
         key = secrets.get_key(PROVIDER_NAME)

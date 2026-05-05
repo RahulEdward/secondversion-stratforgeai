@@ -3,6 +3,7 @@ import { cn } from '@/lib/cn';
 import type { ProviderInfo, ProviderKind } from '@/lib/api';
 import { useAppStore } from '@/store/useAppStore';
 import { toast } from '../ui/Toast';
+import Tooltip from '../ui/Tooltip';
 import ApiKeyDialog from './ApiKeyDialog';
 import ChatGPTLoginDialog from './ChatGPTLoginDialog';
 import OllamaConfigDialog from './OllamaConfigDialog';
@@ -108,6 +109,7 @@ export default function ProviderCard({
   const kind = KIND_STYLES[provider.kind];
   const isOllama = provider.name === 'ollama';
   const isChatGPT = provider.name === 'chatgpt-subscription';
+  const isClaudeCli = provider.name === 'claude-cli';
   const configured = provider.has_credential;
   // For Ollama, configured is always true (base URL defaults), so use reachability as the status signal.
   const dotClass = (() => {
@@ -124,6 +126,11 @@ export default function ProviderCard({
       if (provider.reachable === true) return 'Daemon reachable';
       if (provider.reachable === false) return 'Daemon not running';
       return 'Unknown';
+    }
+    if (isClaudeCli) {
+      if (provider.reachable === true) return 'CLI detected — logged in';
+      if (provider.extra?.cli_installed) return 'CLI installed but missing auth (run: claude login)';
+      return 'CLI not found (install via npm)';
     }
     if (isChatGPT && configured) {
       const email = typeof provider.extra?.email === 'string' ? provider.extra.email : '';
@@ -159,7 +166,43 @@ export default function ProviderCard({
                 {kind.label}
               </span>
             </div>
-            <p className="text-xs text-fg-muted mt-1">{description}</p>
+            {isClaudeCli ? (
+              <div className="text-xs text-fg-muted mt-1 flex items-center gap-1.5 flex-wrap">
+                <span>Use your Claude Code CLI login to access Claude models.</span>
+                <Tooltip 
+                  position="bottom"
+                  contentClassName="!max-w-[420px]"
+                  content={
+                    <div className="space-y-3 py-1 text-[11px]">
+                      <div>
+                        <p className="font-semibold text-fg">Step 1: Command Kahan Run Karni Hai?</p>
+                        <p className="text-fg-subtle mt-0.5">Apne computer par naya Command Prompt, PowerShell ya VS Code Terminal open karein. Wahan type karein: <code className="bg-white/10 px-1 py-0.5 rounded text-[10px]">claude login</code> aur Enter press karein.</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-fg">Step 2: CLI Mein Login Kaise Hoga?</p>
+                        <ul className="list-disc list-outside ml-3.5 mt-0.5 space-y-0.5 text-fg-subtle">
+                          <li>Browser automatically open ho jayega. (Agar na ho toh terminal se link copy kar ke khol lein).</li>
+                          <li>Apne Claude account (Google/Email) se login karein.</li>
+                          <li>Browser mein <i>"Login Successful - You can close this tab"</i> aane ke baad tab close kar dein.</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-fg">Step 3: CLI aur App Connect Kaise Honge?</p>
+                        <p className="text-fg-subtle mt-0.5">Aapko khud kuch nahi karna, yeh <b>completely automatic</b> hai! CLI ek hidden <code className="bg-white/10 px-1 py-0.5 rounded text-[10px]">auth.json</code> file save karegi jise StratForge detect kar lega. Settings refresh karne par card <b>Green (✓ Connected)</b> ho jayega.</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-fg">Step 4: Use Kaise Karein?</p>
+                        <p className="text-fg-subtle mt-0.5">Chat interface par jayen, top se <b>Model Picker</b> open karein, aur list se <b>Claude 3.5 Sonnet (CLI)</b> select kar ke chat start karein!</p>
+                      </div>
+                    </div>
+                  }
+                >
+                  <span className="text-accent hover:text-accent-hover transition-colors">How to connect?</span>
+                </Tooltip>
+              </div>
+            ) : (
+              <p className="text-xs text-fg-muted mt-1">{description}</p>
+            )}
             {isOllama && provider.extra?.base_url && (
               <p className="text-[11px] font-mono text-fg-subtle mt-1.5 truncate">
                 {String(provider.extra.base_url)}
@@ -174,7 +217,7 @@ export default function ProviderCard({
             <span>{statusText}</span>
           </div>
           <div className="flex items-center gap-2">
-            {configured && !isOllama && !isChatGPT && (
+            {configured && !isOllama && !isChatGPT && !isClaudeCli && (
               <button
                 onClick={handleDisconnect}
                 className="h-7 px-2.5 text-xs rounded text-fg-muted hover:text-fg hover:bg-bg-hover transition-colors"
@@ -182,21 +225,31 @@ export default function ProviderCard({
                 Disconnect
               </button>
             )}
-            <button
-              onClick={() => setDialogOpen(true)}
-              className={cn(
-                'h-7 px-3 text-xs rounded transition-colors',
-                'bg-accent hover:bg-accent-hover text-white',
-              )}
-            >
-              {isOllama
-                ? 'Configure'
-                : isChatGPT
-                  ? configured ? 'Manage' : 'Sign in'
-                  : configured
-                    ? 'Update key'
-                    : 'Add key'}
-            </button>
+            {!isClaudeCli && (
+              <button
+                onClick={() => setDialogOpen(true)}
+                className={cn(
+                  'h-7 px-3 text-xs rounded transition-colors',
+                  'bg-accent hover:bg-accent-hover text-white',
+                )}
+              >
+                {isOllama
+                  ? 'Configure'
+                  : isChatGPT
+                    ? configured ? 'Manage' : 'Sign in'
+                    : configured
+                      ? 'Update key'
+                      : 'Add key'}
+              </button>
+            )}
+            {isClaudeCli && (
+              <span className={cn(
+                'h-7 px-3 text-xs rounded flex items-center',
+                configured ? 'text-emerald-400' : 'text-amber-400',
+              )}>
+                {configured ? '✓ Connected' : '✗ Not Connected'}
+              </span>
+            )}
           </div>
         </div>
       </article>

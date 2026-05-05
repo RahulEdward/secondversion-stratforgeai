@@ -196,12 +196,15 @@ function MessageContent({ message, pendingToolIds = new Set() }: { message: Mess
 
   const activeReportId = useAppStore((s) => s.activeReportId);
   const setActiveReport = useAppStore((s) => s.setActiveReport);
+  const autoOpenedRef = useRef<string | null>(null);
 
   // Layer 2 — only auto-flip the panel if no other report is currently
   // active. We *don't* overwrite an existing selection on every render;
-  // that would yank focus from a report the user is reading.
+  // that would yank focus from a report the user is reading. We also track
+  // what we've auto-opened to avoid re-opening if the user explicitly closes it.
   useEffect(() => {
-    if (mentionedReportId && !activeReportId) {
+    if (mentionedReportId && !activeReportId && autoOpenedRef.current !== mentionedReportId) {
+      autoOpenedRef.current = mentionedReportId;
       setActiveReport(mentionedReportId, null);
     }
   }, [mentionedReportId, activeReportId, setActiveReport]);

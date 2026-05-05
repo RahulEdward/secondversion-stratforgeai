@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   PanelRight, ChevronDown, Eye, GitCompare, Terminal as TerminalIcon,
-  FolderOpen, ListChecks, ClipboardList,
+  FolderOpen, ListChecks, ClipboardList, Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAppStore, type RightPaneMode, type PermissionMode } from '@/store/useAppStore';
@@ -17,6 +17,7 @@ const ITEMS: MenuItem[] = [
   { id: 'preview', label: 'Preview', icon: Eye, shortcut: '⇧Ctrl P' },
   { id: 'diff', label: 'Diff', icon: GitCompare, shortcut: '⇧Ctrl D' },
   { id: 'terminal', label: 'Terminal', icon: TerminalIcon, shortcut: 'Ctrl `' },
+  { id: 'runtime', label: 'Runtime', icon: Activity, shortcut: '⇧Ctrl R' },
   { id: 'files', label: 'Files', icon: FolderOpen, shortcut: '⇧Ctrl F' },
   { id: 'tasks', label: 'Tasks', icon: ListChecks, shortcut: '' },
   { id: 'plan', label: 'Plan', icon: ClipboardList, shortcut: '' },
@@ -29,6 +30,8 @@ export default function RightPaneMenu() {
   const setMode = useAppStore((s) => s.setRightPaneMode);
   const permission = useAppStore((s) => s.permissionMode);
   const setPermission = useAppStore((s) => s.setPermissionMode);
+  const toggleArtifacts = useAppStore((s) => s.toggleArtifacts);
+  const artifactsOpen = useAppStore((s) => s.artifactsOpen);
 
   // Close on outside click.
   useEffect(() => {
@@ -48,6 +51,7 @@ export default function RightPaneMenu() {
       if (ctrl && shift && (e.key === 'P' || e.key === 'p')) { e.preventDefault(); setMode('preview'); }
       else if (ctrl && shift && (e.key === 'D' || e.key === 'd')) { e.preventDefault(); setMode('diff'); }
       else if (ctrl && shift && (e.key === 'F' || e.key === 'f')) { e.preventDefault(); setMode('files'); }
+      else if (ctrl && shift && (e.key === 'R' || e.key === 'r')) { e.preventDefault(); setMode('runtime'); }
       else if (ctrl && !shift && e.key === '`') { e.preventDefault(); setMode('terminal'); }
     };
     window.addEventListener('keydown', onKey);
@@ -67,17 +71,32 @@ export default function RightPaneMenu() {
 
   return (
     <div ref={ref} className="relative no-drag">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          'h-7 px-2 inline-flex items-center gap-1 rounded',
-          'text-fg-muted hover:text-fg hover:bg-bg-hover transition-colors',
-        )}
-        title="Open panel menu"
-      >
-        <PanelRight size={14} strokeWidth={1.75} />
-        <ChevronDown size={11} strokeWidth={1.75} />
-      </button>
+      <div className={cn(
+        'flex items-center rounded overflow-hidden',
+        artifactsOpen ? 'bg-bg-panel text-fg' : 'text-fg-muted bg-transparent'
+      )}>
+        <button
+          onClick={toggleArtifacts}
+          className={cn(
+            'h-7 px-2 flex items-center justify-center transition-colors',
+            'hover:text-fg hover:bg-bg-hover'
+          )}
+          title={artifactsOpen ? 'Hide panel' : 'Show panel'}
+        >
+          <PanelRight size={14} strokeWidth={1.75} />
+        </button>
+        <div className="w-[1px] h-4 bg-border-subtle" />
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            'h-7 px-1 flex items-center justify-center transition-colors',
+            'hover:text-fg hover:bg-bg-hover'
+          )}
+          title="Panel menu"
+        >
+          <ChevronDown size={11} strokeWidth={1.75} />
+        </button>
+      </div>
 
       {open && (
         <div

@@ -8,6 +8,7 @@ import {
   useActiveDataset,
 } from '@/store/useAppStore';
 import Popup, { PopupItem, PopupSection } from '../ui/Popup';
+import RightPaneMenu from '../shell/RightPaneMenu';
 
 export default function MainHeader() {
   const project = useActiveProject();
@@ -18,8 +19,6 @@ export default function MainHeader() {
   const setActiveSession = useAppStore((s) => s.setActiveSession);
   const setActiveDataset = useAppStore((s) => s.setActiveDataset);
   const createSession = useAppStore((s) => s.createSession);
-  const toggleArtifacts = useAppStore((s) => s.toggleArtifacts);
-  const artifactsOpen = useAppStore((s) => s.artifactsOpen);
 
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [datasetPickerOpen, setDatasetPickerOpen] = useState(false);
@@ -156,17 +155,7 @@ export default function MainHeader() {
         )}
       </div>
 
-      <button
-        onClick={toggleArtifacts}
-        title={artifactsOpen ? 'Hide artifacts' : 'Show artifacts'}
-        className={cn(
-          'h-7 w-7 flex items-center justify-center rounded',
-          'text-fg-muted hover:text-fg hover:bg-bg-hover transition-colors',
-          artifactsOpen && 'bg-bg-panel text-fg',
-        )}
-      >
-        <PanelRight size={14} strokeWidth={1.75} />
-      </button>
+      <RightPaneMenu />
     </header>
   );
 }

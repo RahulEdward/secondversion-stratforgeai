@@ -5,11 +5,13 @@ from typing import Dict, List, Optional
 
 from .base import Provider, ProviderAvailability
 from .chatgpt_subscription import ChatGPTSubscriptionProvider
+from .claude_cli_p import ClaudeCliProvider
 from .google_p import GoogleProvider
 from .ollama_p import OllamaProvider, DEFAULT_BASE_URL
 
 _PROVIDERS: Dict[str, Provider] = {
     ChatGPTSubscriptionProvider.name: ChatGPTSubscriptionProvider(),
+    ClaudeCliProvider.name: ClaudeCliProvider(),
     GoogleProvider.name: GoogleProvider(),
     OllamaProvider.name: OllamaProvider(),
 }
@@ -46,4 +48,7 @@ async def provider_info(name: str) -> Optional[ProviderAvailability]:
         email = provider.account_email()
         if email:
             avail.extra["email"] = email
+    if isinstance(provider, ClaudeCliProvider):
+        avail.reachable = provider.has_credential()
+        avail.extra["cli_installed"] = provider.cli_installed()
     return avail

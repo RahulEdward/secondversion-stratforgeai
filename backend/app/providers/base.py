@@ -55,6 +55,8 @@ class Provider:
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
         model: Optional[str] = None,
+        system: Optional[str] = None,
+        session_id: Optional[str] = None,
     ) -> AsyncIterator[Dict[str, Any]]:  # pragma: no cover — Phase 6
         raise NotImplementedError
         # Unreachable `yield` keeps the async-iterator type.

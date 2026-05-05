@@ -504,6 +504,124 @@ async def run_agent_tool_endpoint(payload: Dict[str, Any] = Body(...)) -> Dict[s
     return await run_tool(name, inputs, permission_mode=mode)
 
 
+@router.post("/agent/transcribe")
+async def transcribe_audio_endpoint(file: UploadFile) -> Dict[str, str]:
+    """Transcribe an audio file using OpenAI Whisper."""
+    import httpx
+    from . import secrets
+    
+    key = secrets.get_key("openai")
+    if not key:
+        raise HTTPException(status_code=400, detail="OpenAI API key not configured. Please add it in settings.")
+        
+    audio_bytes = await file.read()
+    filename = file.filename or "audio.webm"
+    
+    headers = {"Authorization": f"Bearer {key}"}
+    files = {"file": (filename, audio_bytes, file.content_type or "audio/webm")}
+    data = {"model": "whisper-1"}
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                headers=headers,
+                data=data,
+                files=files
+            )
+        resp.raise_for_status()
+        result = resp.json()
+        return {"text": result.get("text", "")}
+    except httpx.HTTPStatusError as exc:
+        err_detail = "OpenAI transcription failed"
+        try:
+            err_data = exc.response.json()
+            err_detail = err_data.get("error", {}).get("message", err_detail)
+        except Exception:
+            err_detail = f"{err_detail}: {exc.response.text}"
+        raise HTTPException(status_code=502, detail=err_detail)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(exc)}")
+
+
+# ---------- Process Manager (Runtime Environment) ----------
+
+
+@router.get("/processes")
+def list_processes_endpoint() -> Dict[str, Any]:
+    """List all managed background processes."""
+    from .process_manager import get_manager
+    mgr = get_manager()
+    mgr.cleanup_dead()
+    return {
+        "count": len(mgr.list_all()),
+        "processes": [p.to_dict() for p in mgr.list_all()],
+    }
+
+
+@router.post("/processes", status_code=status.HTTP_201_CREATED)
+def start_process_endpoint(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """Start a new managed background process."""
+    command = payload.get("command")
+    if not command or not isinstance(command, str):
+        raise HTTPException(400, "Missing `command`")
+    cwd = payload.get("cwd")
+    label = payload.get("label")
+    wait = payload.get("wait_ready", True)
+
+    from .process_manager import get_manager
+    mgr = get_manager()
+
+    if wait:
+        mp = mgr.start_and_wait(command, cwd=cwd, label=label, timeout=30)
+    else:
+        mp = mgr.start(command, cwd=cwd, label=label)
+
+    result = mp.to_dict()
+    result["recent_output"] = mp.get_output(last_n=20)
+    return result
+
+
+@router.delete("/processes/{process_id}", status_code=status.HTTP_200_OK)
+def stop_process_endpoint(process_id: str) -> Dict[str, Any]:
+    """Stop a managed process."""
+    from .process_manager import get_manager
+    mgr = get_manager()
+    if not mgr.stop(process_id):
+        raise HTTPException(404, f"Process {process_id} not found")
+    return {"process_id": process_id, "stopped": True}
+
+
+@router.post("/processes/{process_id}/restart", status_code=status.HTTP_200_OK)
+def restart_process_endpoint(process_id: str) -> Dict[str, Any]:
+    """Restart a managed process."""
+    from .process_manager import get_manager
+    mgr = get_manager()
+    mp = mgr.restart(process_id)
+    if mp is None:
+        raise HTTPException(404, f"Process {process_id} not found")
+    result = mp.to_dict()
+    result["recent_output"] = mp.get_output(last_n=20)
+    return result
+
+
+@router.get("/processes/{process_id}/output")
+def process_output_endpoint(process_id: str, last_n: int = 50) -> Dict[str, Any]:
+    """Get recent output from a managed process."""
+    from .process_manager import get_manager
+    mgr = get_manager()
+    mp = mgr.get(process_id)
+    if mp is None:
+        raise HTTPException(404, f"Process {process_id} not found")
+    return {
+        "process_id": process_id,
+        "alive": mp.alive,
+        "ready": mp.ready,
+        "detected_port": mp.detected_port,
+        "lines": mp.get_output(last_n=last_n),
+    }
+
+
 # ---------- Memory (Phase 9) — per-project durable learnings ----------
 
 

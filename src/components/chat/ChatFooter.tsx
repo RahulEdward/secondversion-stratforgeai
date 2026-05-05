@@ -43,29 +43,7 @@ function IconBtn({
   );
 }
 
-// Web Speech API typing — minimal subset we use.
-type SR = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  onresult: ((e: SpeechRecognitionEvent) => void) | null;
-  onerror: ((e: { error?: string }) => void) | null;
-  onend: (() => void) | null;
-};
-interface SpeechRecognitionEvent {
-  results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>;
-  resultIndex: number;
-}
-
-function getSpeechRecognition(): { new (): SR } | null {
-  const w = window as unknown as {
-    SpeechRecognition?: { new (): SR };
-    webkitSpeechRecognition?: { new (): SR };
-  };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
-}
+// Voice input handled via MediaRecorder and backend /api/agent/transcribe.
 
 export default function ChatFooter() {
   const permissionMode = useAppStore((s) => s.permissionMode);
@@ -79,8 +57,8 @@ export default function ChatFooter() {
   const project = useActiveProject();
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const recRef = useRef<SR | null>(null);
-  const draftAtStartRef = useRef<string>('');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const [listening, setListening] = useState(false);
   const [modeOpen, setModeOpen] = useState(false);
   const modeBtnRef = useRef<HTMLButtonElement>(null);
@@ -91,7 +69,11 @@ export default function ChatFooter() {
   // Cleanup mic on unmount.
   useEffect(() => {
     return () => {
-      try { recRef.current?.stop(); } catch { /* noop */ }
+      if (mediaRecorderRef.current) {
+        try {
+          mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+        } catch { /* noop */ }
+      }
     };
   }, []);
 
@@ -181,50 +163,59 @@ export default function ChatFooter() {
     }
   };
 
-  // ── Mic button: Web Speech API toggle ──
-  const handleMicClick = () => {
-    const Ctor = getSpeechRecognition();
-    if (!Ctor) {
-      toast('Voice input not supported in this build');
-      return;
-    }
-
+  // ── Mic button: MediaRecorder toggle ──
+  const handleMicClick = async () => {
     if (listening) {
-      try { recRef.current?.stop(); } catch { /* noop */ }
-      return;
-    }
-
-    const rec = new Ctor();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = 'en-US';
-    draftAtStartRef.current = draft;
-
-    rec.onresult = (event: SpeechRecognitionEvent) => {
-      let interim = '';
-      let final = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const text = result[0]?.transcript ?? '';
-        if (result.isFinal) final += text;
-        else interim += text;
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
       }
-      const base = draftAtStartRef.current;
-      const combined = (base ? base + ' ' : '') + (final + interim).trim();
-      setChatDraft(combined);
-      if (final) draftAtStartRef.current = combined;
-    };
-    rec.onerror = (e) => {
-      toast(`Mic: ${e.error || 'error'}`);
-      setListening(false);
-    };
-    rec.onend = () => setListening(false);
+      return; // setListening(false) is called in onstop
+    }
 
     try {
-      rec.start();
-      recRef.current = rec;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        setListening(false);
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (audioBlob.size === 0) return;
+
+        toast('Transcribing...');
+        try {
+          const { transcribeAudio } = await import('@/lib/api');
+          const text = await transcribeAudio(audioBlob);
+          if (text) {
+            setChatDraft((prev) => (prev ? prev + ' ' : '') + text.trim());
+            toast('Transcription added');
+          } else {
+            toast('No speech detected');
+          }
+        } catch (err) {
+          let msg = 'Transcription failed';
+          if (err instanceof Error) {
+            msg = err.message;
+            try {
+              const parsed = JSON.parse(msg);
+              if (parsed && typeof parsed === 'object' && parsed.detail) {
+                msg = parsed.detail;
+              }
+            } catch { /* ignore parse error */ }
+          }
+          toast(msg);
+        }
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
       setListening(true);
-      toast('Listening…');
+      toast('Listening… (Click again to stop)');
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Failed to start mic');
     }

@@ -437,6 +437,15 @@ export function openSessionStream(sessionId: string): {
     } catch { /* ignore parse errors */ }
   };
 
+  ws.onclose = (e) => {
+    // If the socket closes and it wasn't a normal 1000 closure,
+    // synthesize an error so the frontend resets its `streaming` state
+    // and unlocks the chat input box.
+    if (e.code !== 1000) {
+      frameCb?.({ type: 'error', message: 'Connection lost to AI engine.' });
+    }
+  };
+
   return {
     send: (text, opts) =>
       ws.send(
@@ -484,3 +493,23 @@ export async function pollChatGPTAuth(
 export async function signOutChatGPT(): Promise<void> {
   await fetch(`${BASE_URL}/api/auth/chatgpt/session`, { method: 'DELETE' });
 }
+
+export async function transcribeAudio(audioBlob: Blob): Promise<string> {
+  const form = new FormData();
+  form.append('file', audioBlob, 'audio.webm');
+  
+  const response = await fetch(`${BASE_URL}/api/agent/transcribe`, {
+    method: 'POST',
+    body: form,
+  });
+  
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new ApiError(response.status, text || response.statusText);
+  }
+  
+  const data = await response.json();
+  return data.text;
+}
+
+

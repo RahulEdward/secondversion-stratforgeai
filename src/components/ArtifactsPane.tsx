@@ -15,6 +15,7 @@ import FilesPanel from './panels/FilesPanel';
 import TasksPanel from './panels/TasksPanel';
 import DiffPanel from './panels/DiffPanel';
 import TerminalPanel from './panels/TerminalPanel';
+import RuntimePanel from './panels/RuntimePanel';
 import ResizeHandle from './ResizeHandle';
 
 // Pick the same backend base URL the API client uses. Repeated here so we
@@ -42,6 +43,7 @@ export default function ArtifactsPane() {
   if (mode === 'tasks')   return <PaneWrap title="Tasks"   onClose={() => setMode(null)}><TasksPanel /></PaneWrap>;
   if (mode === 'diff')    return <PaneWrap title="Diff"    onClose={() => setMode(null)}><DiffPanel /></PaneWrap>;
   if (mode === 'terminal')return <PaneWrap title="Terminal"onClose={() => setMode(null)}><TerminalPanel /></PaneWrap>;
+  if (mode === 'runtime') return <PaneWrap title="Runtime" onClose={() => setMode(null)}><RuntimePanel /></PaneWrap>;
 
   // (Default below = legacy report iframe behaviour, preserved.)
   // Force-refresh the iframe by bumping a key. Useful after re-rendering a
