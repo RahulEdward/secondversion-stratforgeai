@@ -14,7 +14,7 @@ function createWindow() {
     height: 900,
     minWidth: 1000,
     minHeight: 600,
-    backgroundColor: '#100517',
+    backgroundColor: '#000000',
     title: 'StratForge AI',
     autoHideMenuBar: true,
     icon: path.join(__dirname, '../public/icon.ico'),
@@ -22,8 +22,8 @@ function createWindow() {
     // tinted to match the sidebar color so the top strip is fully dark on Windows 11.
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#100517',
-      symbolColor: '#ebe6f0',
+      color: '#050008',
+      symbolColor: '#ede7f6',
       height: 40,
     },
     webPreferences: {
@@ -55,9 +55,9 @@ app.whenReady().then(() => {
   ipcMain.handle('set-titlebar-theme', (_event, theme: 'light' | 'dark') => {
     if (!mainWindow) return;
     if (theme === 'light') {
-      mainWindow.setTitleBarOverlay({ color: '#ececf1', symbolColor: '#18181b' });
+      mainWindow.setTitleBarOverlay({ color: '#efebf5', symbolColor: '#1a1625' });
     } else {
-      mainWindow.setTitleBarOverlay({ color: '#100517', symbolColor: '#ebe6f0' });
+      mainWindow.setTitleBarOverlay({ color: '#050008', symbolColor: '#ede7f6' });
     }
   });
   createWindow();

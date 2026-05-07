@@ -5,59 +5,63 @@
 /* CSS variables must live outside @layer so Tailwind doesn't strip them */
 :root,
 .dark {
-  --color-bg: #170721;
-  --color-bg-sidebar: #100517;
-  --color-bg-panel: #1f0c2d;
-  --color-bg-hover: #261134;
-  --color-bg-active: #321647;
-  --color-bg-titlebar: #100517;
+  /* Backgrounds — pure black base with subtle purple tint on panels */
+  --color-bg: #000000;
+  --color-bg-sidebar: #050008;
+  --color-bg-panel: #0b0414;
+  --color-bg-hover: #150a22;
+  --color-bg-active: #1e0f2e;
+  --color-bg-titlebar: #050008;
 
-  --color-border: #2a163a;
-  --color-border-strong: #3d2151;
-  --color-border-subtle: #1f0d2b;
+  /* Borders — dark purple-tinted */
+  --color-border: #1f0d30;
+  --color-border-strong: #3a1f5a;
+  --color-border-subtle: #120820;
 
-  --color-fg: #ebe6f0;
-  --color-fg-muted: #a89db4;
-  --color-fg-subtle: #7d7188;
-  --color-fg-faint: #554a5e;
+  /* Foreground text */
+  --color-fg: #ede7f6;
+  --color-fg-muted: #a89cbf;
+  --color-fg-subtle: #7a6d94;
+  --color-fg-faint: #4d4163;
 
-  --color-accent: #c8724d;
-  --color-accent-hover: #b8633e;
-  --color-accent-subtle: rgba(200, 114, 77, 0.12);
+  /* Accent — vivid purple */
+  --color-accent: #a855f7;
+  --color-accent-hover: #9333ea;
+  --color-accent-subtle: rgba(168, 85, 247, 0.14);
 }
 
 .light {
-  --color-bg: #f4f4f5;
-  --color-bg-sidebar: #ececf1;
+  --color-bg: #f7f5fb;
+  --color-bg-sidebar: #efebf5;
   --color-bg-panel: #ffffff;
-  --color-bg-hover: #e4e4e7;
-  --color-bg-active: #d4d4d8;
-  --color-bg-titlebar: #ececf1;
+  --color-bg-hover: #e4dff0;
+  --color-bg-active: #d6cee8;
+  --color-bg-titlebar: #efebf5;
 
-  --color-border: #d4d4d8;
-  --color-border-strong: #a1a1aa;
-  --color-border-subtle: #e4e4e7;
+  --color-border: #d6cee8;
+  --color-border-strong: #a594c9;
+  --color-border-subtle: #e4dff0;
 
-  --color-fg: #18181b;
-  --color-fg-muted: #52525b;
-  --color-fg-subtle: #71717a;
-  --color-fg-faint: #a1a1aa;
+  --color-fg: #1a1625;
+  --color-fg-muted: #54476a;
+  --color-fg-subtle: #736589;
+  --color-fg-faint: #a594c9;
 
-  --color-accent: #c85a32;
-  --color-accent-hover: #a14522;
-  --color-accent-subtle: rgba(200, 90, 50, 0.12);
+  --color-accent: #7e22ce;
+  --color-accent-hover: #6b21a8;
+  --color-accent-subtle: rgba(126, 34, 206, 0.12);
 }
 
 .light body {
-  background-color: #f4f4f5;
-  color: #18181b;
+  background-color: #f7f5fb;
+  color: #1a1625;
 }
 
 .light ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
+  background: #d6cee8;
 }
 .light ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
+  background: #a594c9;
 }
 
 @layer base {
@@ -70,8 +74,8 @@
   }
 
   body {
-    background-color: #170721;
-    color: #ebe6f0;
+    background-color: #000000;
+    color: #ede7f6;
     font-family:
       Inter,
       ui-sans-serif,
@@ -99,11 +103,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a163a;
+    background: #1f0d30;
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3d2151;
+    background: #3a1f5a;
   }
 }
 

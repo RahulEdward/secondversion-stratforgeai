@@ -143,10 +143,10 @@ def _run_agent_in_thread(
     try:
         # Lazy imports — these pull in the whole agent harness, which is
         # expensive to import at module load time.
-        from src.agent.loop import AgentLoop
-        from src.memory.persistent import PersistentMemory
-        from src.providers.chat import ChatLLM, set_active_provider, clear_active_provider
-        from src.tools import build_registry
+        from app.agents.loop import AgentLoop
+        from app.agent_memory.persistent import PersistentMemory
+        from app.agent_llm import ChatLLM, set_active_provider, clear_active_provider
+        from app.agent_tools import build_registry
 
         # Point ChatLLM at the StratForge provider for this session.
         set_active_provider(provider_name, model)
@@ -228,7 +228,7 @@ def _run_agent_in_thread(
         _enqueue({"type": "error", "message": f"Agent engine error: {exc}"})
     finally:
         try:
-            from src.providers.chat import clear_active_provider
+            from app.agent_llm import clear_active_provider
             clear_active_provider()
         except Exception:
             pass

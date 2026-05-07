@@ -281,7 +281,7 @@ def list_tools() -> Dict[str, Any]:
     factor/options/memory/web/doc/shadow-account tools).
     """
     try:
-        from src.tools import build_registry
+        from app.agent_tools import build_registry
         registry = build_registry(include_shell_tools=True)
         return {"tools": registry.get_definitions()}
     except Exception as exc:  # noqa: BLE001
@@ -505,7 +505,7 @@ async def run_agent_tool_endpoint(payload: Dict[str, Any] = Body(...)) -> Dict[s
         raise HTTPException(400, "`input` must be an object")
 
     try:
-        from src.tools import build_registry
+        from app.agent_tools import build_registry
         registry = build_registry(include_shell_tools=True)
         result = registry.execute(name, inputs)
     except Exception as exc:  # noqa: BLE001
