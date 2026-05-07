@@ -30,8 +30,7 @@ openyak/
 worktree_changes.patch
 
 # Third-party reference repositories (cloned for study, not shipped)
-reference/Vibe-Trading/
-reference/companion/
+reference/
 
 # Python build artifacts
 backend/__pycache__/
