@@ -192,7 +192,8 @@ export default function ChatFooter() {
           const { transcribeAudio } = await import('@/lib/api');
           const text = await transcribeAudio(audioBlob);
           if (text) {
-            setChatDraft((prev) => (prev ? prev + ' ' : '') + text.trim());
+            const currentDraft = useAppStore.getState().chatDraft;
+            setChatDraft((currentDraft ? currentDraft + ' ' : '') + text.trim());
             toast('Transcription added');
           } else {
             toast('No speech detected');

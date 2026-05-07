@@ -1,14 +1,61 @@
-fastapi==0.115.5
-uvicorn[standard]==0.32.1
-python-multipart==0.0.20
-pandas==2.2.3
-pyarrow==18.1.0
-openpyxl==3.1.5
-numpy==2.1.3
+# StratForge AI + Vibe-Trading integrated requirements
+# =====================================================
 
-# Phase 4 — AI providers
-httpx==0.27.2
-keyring==25.5.0
-anthropic==0.39.0
-openai==1.54.4
-google-generativeai==0.8.3
+# --- StratForge core (FastAPI + UI) ---
+fastapi>=0.115.12,<0.117
+uvicorn[standard]>=0.32.1
+python-multipart>=0.0.20
+pandas>=2.2.3
+pyarrow>=18.1.0
+openpyxl>=3.1.5
+numpy>=1.26,<2.2
+
+# --- LLM providers (StratForge existing - reused by Vibe-Trading agents) ---
+httpx>=0.28.1
+keyring>=25.5.0
+anthropic>=0.39.0
+openai>=1.54.4
+google-generativeai>=0.8.3
+
+# --- Vibe-Trading data & compute ---
+scipy>=1.10.0
+duckdb>=1.2.0
+
+# --- Vibe-Trading document readers ---
+python-docx>=1.1.0
+python-pptx>=0.6.23
+pypdfium2>=4.0.0
+Pillow>=10.0.0
+
+# --- Vibe-Trading ML / signal skills ---
+scikit-learn>=1.3.0
+joblib>=1.3.0
+smartmoneyconcepts>=0.0.1
+pyharmonics>=1.5.0
+
+# --- Vibe-Trading data providers ---
+tushare>=1.2.89
+requests>=2.31.0
+yfinance>=0.2.30
+akshare>=1.12.0
+ccxt>=4.0.0
+
+# --- Vibe-Trading SSE streaming ---
+sse-starlette>=1.6.0
+
+# --- Vibe-Trading MCP server (optional) ---
+fastmcp>=2.0.0
+
+# --- Vibe-Trading web search ---
+ddgs>=6.0.0
+
+# --- Vibe-Trading shadow account reports ---
+jinja2>=3.1.0
+matplotlib>=3.7.0
+weasyprint>=60.0
+pyyaml>=6.0.0
+
+# --- Vibe-Trading CLI UX ---
+rich>=13.0.0
+prompt_toolkit>=3.0.0
+python-dotenv>=1.0.0

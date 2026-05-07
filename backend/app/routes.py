@@ -23,7 +23,6 @@ from .indicators import IndicatorError, compute as compute_indicator
 from .providers import PROVIDER_NAMES, get_provider, provider_info
 from .providers.base import ProviderError
 from .providers.ollama_p import OllamaProvider
-from .tools import all_tools
 from .schemas import (
     AppState,
     Dataset,
@@ -276,8 +275,17 @@ def _float_safe(value: float) -> Optional[float]:
 
 @router.get("/tools")
 def list_tools() -> Dict[str, Any]:
-    """List all tool schemas the AI orchestrator can call."""
-    return {"tools": all_tools()}
+    """List all tool schemas the AI orchestrator can call.
+
+    Backed by Vibe-Trading's tool registry (74 skills, 7 backtest engines,
+    factor/options/memory/web/doc/shadow-account tools).
+    """
+    try:
+        from src.tools import build_registry
+        registry = build_registry(include_shell_tools=True)
+        return {"tools": registry.get_definitions()}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Tool registry unavailable: {exc}") from exc
 
 
 @router.post("/datasets/{dataset_id}/indicators")
@@ -487,7 +495,7 @@ def set_app_state(state: AppState) -> AppState:
 
 @router.post("/agent/tool")
 async def run_agent_tool_endpoint(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-    """Thin REST proxy over a single agent-tool dispatch. Used by the
+    """Thin REST proxy over a single Vibe-Trading tool dispatch. Used by the
     Claude Code-style right-pane panels (Files / Diff / Terminal)."""
     name = str(payload.get("name") or "")
     if not name:
@@ -495,13 +503,24 @@ async def run_agent_tool_endpoint(payload: Dict[str, Any] = Body(...)) -> Dict[s
     inputs = payload.get("input") or {}
     if not isinstance(inputs, dict):
         raise HTTPException(400, "`input` must be an object")
-    mode = str(payload.get("permission_mode") or "plan")
-    if mode not in {"ask", "accept-edits", "plan", "bypass"}:
-        mode = "plan"
 
-    from .tool_exec import run_tool
+    try:
+        from src.tools import build_registry
+        registry = build_registry(include_shell_tools=True)
+        result = registry.execute(name, inputs)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"Tool {name!r} failed: {exc}") from exc
 
-    return await run_tool(name, inputs, permission_mode=mode)
+    # ``registry.execute`` returns a JSON string; normalize to a dict envelope
+    # so the UI sees ``{ok, output, error}`` like before.
+    import json as _json2
+    try:
+        parsed = _json2.loads(result)
+    except (_json2.JSONDecodeError, TypeError):
+        return {"ok": True, "output": result}
+    if isinstance(parsed, dict) and parsed.get("status") == "error":
+        return {"ok": False, "output": None, "error": parsed.get("error")}
+    return {"ok": True, "output": parsed}
 
 
 @router.post("/agent/transcribe")
@@ -884,32 +903,30 @@ def chatgpt_auth_signout() -> None:
 
 @router.post("/strategies/export/pine")
 def export_pine_script(body: dict) -> dict:
-    """Export a strategy to TradingView Pine Script v5."""
-    from .tool_exec import _resolve_export_spec
-    from .export.pine_script import to_pine_script
+    """Export a strategy to TradingView / TDX / MetaTrader.
 
-    spec, _, _ = _resolve_export_spec(body)
-    if spec is None:
-        raise HTTPException(400, "Provide strategy_id or backtest_id")
-    try:
-        code = to_pine_script(spec)
-        return {"ok": True, "pine_script": code, "version": 5}
-    except Exception as exc:
-        raise HTTPException(500, f"Export failed: {exc}")
+    The export pipeline now runs through Vibe-Trading's ``pine-script`` skill
+    (agent tool), which covers Pine v6 + TDX + MQL5. Ask the agent: *"Export
+    this strategy to Pine Script v6 for TradingView"* and it will use
+    ``load_skill("pine-script")`` + ``write_file`` to produce the code.
+    """
+    raise HTTPException(
+        410,
+        "Direct REST export is retired. Ask the agent to export via the "
+        "`pine-script` skill — it produces Pine v6, TDX, and MQL5 in one go.",
+    )
 
 
 @router.post("/strategies/export/signal")
 def export_signal_message(body: dict) -> dict:
-    """Format a strategy as a Telegram/Discord signal."""
-    from .tool_exec import _resolve_export_spec
-    from .export.telegram_signal import format_signal
+    """Format a strategy as a Telegram/Discord signal — retired.
 
-    spec, metrics, grade = _resolve_export_spec(body)
-    if spec is None:
-        raise HTTPException(400, "Provide strategy_id or backtest_id")
-    try:
-        msg = format_signal(spec, metrics or {}, grade=grade or "")
-        return {"ok": True, "message": msg}
-    except Exception as exc:
-        raise HTTPException(500, f"Export failed: {exc}")
+    Use the agent's ``trade-journal`` / ``report-generate`` skills to render
+    share-ready messages, or ask the agent for a plain-text summary.
+    """
+    raise HTTPException(
+        410,
+        "Direct REST export is retired. Ask the agent to format a signal "
+        "message using its report-generate / trade-journal skills.",
+    )
 

@@ -3,7 +3,6 @@ import { FileText } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import type { Message } from '@/lib/api';
 import MarkdownText from './MarkdownText';
-import AgentStepper from './AgentStepper';
 import { extractReportId } from '@/lib/artifactCommands';
 
 export default function MessageList() {
@@ -153,15 +152,15 @@ function MessageGroup({
         ))}
         {/* Streaming elements appended seamlessly to the AI's turn */}
         {pendingTools.map((t) => (
-          <div key={t.id} className="text-xs bg-bg-hover border border-border-subtle rounded-lg px-3 py-2 flex items-center gap-2">
-            <span className="text-amber-400">⚡</span>
-            <span className="text-accent font-medium">{t.name}</span>
+          <div key={t.id} className="text-xs text-fg-muted flex items-center gap-2 py-0.5">
+            <span className="text-fg-subtle">↳</span>
+            <span className="font-mono text-fg">{t.name}</span>
             {t.result ? (
-              <span className={`ml-auto ${t.result.ok ? 'text-emerald-400' : 'text-red-400'}`}>
-                {t.result.ok ? '✓ Done' : `✗ ${t.result.error}`}
+              <span className={`ml-auto ${t.result.ok ? 'text-emerald-500' : 'text-red-400'}`}>
+                {t.result.ok ? 'done' : `error: ${t.result.error}`}
               </span>
             ) : (
-              <span className="text-fg-muted ml-auto animate-pulse">Running…</span>
+              <span className="text-fg-subtle ml-auto animate-pulse">running…</span>
             )}
           </div>
         ))}
@@ -228,7 +227,6 @@ function MessageContent({ message, pendingToolIds = new Set() }: { message: Mess
     <>
       {text && (
         <div className="text-sm text-fg">
-          <AgentStepper text={text} />
           <MarkdownText source={text} />
         </div>
       )}
@@ -258,9 +256,9 @@ function MessageContent({ message, pendingToolIds = new Set() }: { message: Mess
         </div>
       )}
       {toolUses.map((tu, i) => (
-        <div key={i} className="text-xs bg-bg-hover border border-border-subtle rounded-lg px-3 py-2 flex items-center gap-2">
-          <span className="text-amber-400">⚡</span>
-          <span className="text-accent font-medium">{String(tu.name)}</span>
+        <div key={i} className="text-xs text-fg-muted flex items-center gap-2 py-0.5">
+          <span className="text-fg-subtle">↳</span>
+          <span className="font-mono text-fg">{String(tu.name)}</span>
           <span className="text-fg-subtle truncate">{JSON.stringify(tu.input).substring(0, 80)}</span>
         </div>
       ))}

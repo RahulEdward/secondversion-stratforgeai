@@ -14,11 +14,34 @@ export default function ChatInput() {
   const setValue = useAppStore((s) => s.setChatDraft);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
+  // Read last assistant message text from the store (Session type has no .messages field)
+  const lastAssistantText = useAppStore((s) => {
+    if (!session) return '';
+    const msgs = s.messagesBySession[session.id];
+    if (!msgs || msgs.length === 0) return '';
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'assistant') {
+        const content = msgs[i].content;
+        if (typeof content === 'string') {
+          return content;
+        }
+        if (Array.isArray(content)) {
+          return content
+            .filter((b) => b.type === 'text')
+            .map((b) => (b as { text: string }).text)
+            .join('');
+        }
+        return '';
+      }
+    }
+    return '';
+  });
+
   const disabled = !session;
-  const lastMessage = session?.messages?.[session.messages.length - 1];
-  const hasError = lastMessage?.content?.includes('❌ Error') || 
-                   lastMessage?.content?.includes('❌ Backtest failed') ||
-                   lastMessage?.content?.includes('failed:');
+  const hasError =
+    lastAssistantText.includes('❌ Error') ||
+    lastAssistantText.includes('❌ Backtest failed') ||
+    lastAssistantText.includes('failed:');
 
   const autosize = () => {
     const el = taRef.current;
@@ -50,11 +73,11 @@ export default function ChatInput() {
   return (
     <div className="flex flex-col gap-2">
       {/* Smart Alerts & Auto-Fix Quick Action */}
-      {!streaming && lastMessage?.role === 'assistant' && hasError && (
+      {!streaming && session && hasError && (
         <div className="flex px-1">
           <button
             onClick={() => {
-              sendMessage(session!.id, 'Fix this error automatically.');
+              sendMessage(session.id, 'Fix this error automatically.');
             }}
             className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-colors"
           >

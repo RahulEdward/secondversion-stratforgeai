@@ -424,6 +424,7 @@ export function openSessionStream(sessionId: string): {
 } {
   const ws = new WebSocket(`${WS_BASE}/api/sessions/${sessionId}/stream`);
   let frameCb: ((frame: StreamFrame) => void) | null = null;
+  let completed = false; // Track if the stream has completed normally
 
   const ready = new Promise<void>((resolve, reject) => {
     ws.onopen = () => resolve();
@@ -433,6 +434,9 @@ export function openSessionStream(sessionId: string): {
   ws.onmessage = (e) => {
     try {
       const frame = JSON.parse(e.data) as StreamFrame;
+      if (frame.type === 'done') {
+        completed = true;
+      }
       frameCb?.(frame);
     } catch { /* ignore parse errors */ }
   };
@@ -441,7 +445,10 @@ export function openSessionStream(sessionId: string): {
     // If the socket closes and it wasn't a normal 1000 closure,
     // synthesize an error so the frontend resets its `streaming` state
     // and unlocks the chat input box.
-    if (e.code !== 1000) {
+    // Code 1000 = normal closure
+    // Code 1005 = no status received (happens on normal close from our side)
+    // Also skip error if we've already received a 'done' frame.
+    if (!completed && e.code !== 1000 && e.code !== 1005) {
       frameCb?.({ type: 'error', message: 'Connection lost to AI engine.' });
     }
   };
@@ -455,7 +462,10 @@ export function openSessionStream(sessionId: string): {
           dataset_id: opts?.datasetId ?? null,
         }),
       ),
-    close: () => ws.close(),
+    close: () => {
+      completed = true; // Mark as completed to suppress error on close
+      ws.close(1000, 'Normal closure');
+    },
     onFrame: (cb) => { frameCb = cb; },
     ready,
   };
