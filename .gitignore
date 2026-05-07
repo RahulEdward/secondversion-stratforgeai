@@ -36,3 +36,10 @@ reference/
 backend/__pycache__/
 backend/**/__pycache__/
 backend/*.egg-info/
+
+# Agent runtime artifacts (generated per-run)
+backend/runs/
+backend/sessions/
+backend/uploads/
+backend/.swarm/
+backend/workspace/
