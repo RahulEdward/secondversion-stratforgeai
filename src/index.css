@@ -83,8 +83,8 @@
       -apple-system,
       'Segoe UI',
       sans-serif;
-    font-size: 13px;
-    line-height: 18px;
+    font-size: inherit;
+    line-height: inherit;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
     -webkit-font-smoothing: antialiased;
   }
@@ -119,6 +119,11 @@
     -webkit-app-region: no-drag;
   }
 }
+
+/* Font size classes — applied to <html> by the store */
+html.font-small { font-size: 12px !important; line-height: 16px !important; }
+html.font-medium { font-size: 13px !important; line-height: 18px !important; }
+html.font-large { font-size: 15px !important; line-height: 22px !important; }
 
 /* ─── highlight.js theme (Claude Code-style, tuned to project palette) ───
  * Applied via <code class="hljs"> inside fenced code blocks. Token colours

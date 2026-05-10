@@ -28,5 +28,16 @@ if __name__ == "__main__":
         host="127.0.0.1",
         port=8765,
         reload=True,
+        # Only watch source code — ignore artifact directories the agent
+        # writes to during runs. Reloading mid-run kills the WebSocket and
+        # leaves pending coroutines stuck in the prev worker.
+        reload_dirs=[str(_BACKEND_DIR / "app")],
+        reload_excludes=[
+            "runs/*",
+            "sessions/*",
+            ".swarm/*",
+            "**/__pycache__/*",
+            "**/*.pyc",
+        ],
         log_level="info",
     )

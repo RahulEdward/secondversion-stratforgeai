@@ -13,6 +13,7 @@ export default function App() {
   const artifactsOpen = useAppStore((s) => s.artifactsOpen);
   const settingsOpen = useAppStore((s) => s.settingsOpen);
   const theme = useAppStore((s) => s.theme);
+  const fontSize = useAppStore((s) => s.fontSize);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
@@ -30,6 +31,13 @@ export default function App() {
     const bridge = (window as unknown as { stratforge?: { setTitleBarTheme?: (t: 'light' | 'dark') => Promise<void> } }).stratforge;
     bridge?.setTitleBarTheme?.(resolved);
   }, [theme]);
+
+  // Apply font size class to root
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('font-small', 'font-medium', 'font-large');
+    root.classList.add(`font-${fontSize}`);
+  }, [fontSize]);
 
   return (
     <div className="flex flex-col h-screen bg-bg text-fg font-sans text-sm">

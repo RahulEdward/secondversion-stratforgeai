@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { FileText } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import type { Message } from '@/lib/api';
 import MarkdownText from './MarkdownText';
+import ToolActivity, { type ToolActivityItem } from './ToolActivity';
+import ReportCard from './ReportCard';
 import { extractReportId } from '@/lib/artifactCommands';
 
 export default function MessageList() {
@@ -94,19 +95,9 @@ export default function MessageList() {
         <div className="flex gap-3 min-w-0">
           <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center text-[10px] font-bold text-accent shrink-0 mt-0.5">AI</div>
           <div className="flex-1 min-w-0 space-y-2">
-            {pendingTools.map((t) => (
-              <div key={t.id} className="text-xs bg-bg-hover border border-border-subtle rounded-lg px-3 py-2 flex items-center gap-2">
-                <span className="text-amber-400">⚡</span>
-                <span className="text-accent font-medium">{t.name}</span>
-                {t.result ? (
-                  <span className={`ml-auto ${t.result.ok ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {t.result.ok ? '✓ Done' : `✗ ${t.result.error}`}
-                  </span>
-                ) : (
-                  <span className="text-fg-muted ml-auto animate-pulse">Running…</span>
-                )}
-              </div>
-            ))}
+            {pendingTools.length > 0 && (
+              <ToolActivity items={pendingTools as ToolActivityItem[]} streaming={streaming} />
+            )}
             {streaming && draft && (
               <div className="text-sm text-fg">
                 <MarkdownText source={draft} />
@@ -150,20 +141,10 @@ function MessageGroup({
         {messages.map((m, i) => (
           <MessageContent key={m.id || i} message={m} pendingToolIds={pendingToolIds} />
         ))}
-        {/* Streaming elements appended seamlessly to the AI's turn */}
-        {pendingTools.map((t) => (
-          <div key={t.id} className="text-xs text-fg-muted flex items-center gap-2 py-0.5">
-            <span className="text-fg-subtle">↳</span>
-            <span className="font-mono text-fg">{t.name}</span>
-            {t.result ? (
-              <span className={`ml-auto ${t.result.ok ? 'text-emerald-500' : 'text-red-400'}`}>
-                {t.result.ok ? 'done' : `error: ${t.result.error}`}
-              </span>
-            ) : (
-              <span className="text-fg-subtle ml-auto animate-pulse">running…</span>
-            )}
-          </div>
-        ))}
+        {/* Streaming tools — collapsed into a single expandable summary row */}
+        {pendingTools.length > 0 && (
+          <ToolActivity items={pendingTools as ToolActivityItem[]} streaming={streaming} />
+        )}
         {streaming && draft && (
           <div className="text-sm text-fg">
             <MarkdownText source={draft} />
@@ -186,27 +167,17 @@ function MessageContent({ message, pendingToolIds = new Set() }: { message: Mess
   const toolUses = message.content.filter((b) => b.type === 'tool_use' && !pendingToolIds.has(b.id as string));
   const toolResults = message.content.filter((b) => b.type === 'tool_result');
 
-  // Detect a `rp_<hex>` mention in assistant text. We use this to (a)
-  // auto-open the artifacts panel as a fallback when the LLM didn't
-  // re-call render_report (Layer 2) and (b) render a one-click "Open in
-  // Artifacts" pill the user can fire manually (Layer 3).
+  // Detect a `rp_<hex>` mention in assistant text so we can render an
+  // inline ReportCard. We do NOT auto-open the Artifacts or Preview
+  // panels — the ReportCard has its own "View Full Report" button that
+  // the user clicks explicitly.
   const mentionedReportId =
     message.role === 'assistant' && text ? extractReportId(text) : null;
 
   const activeReportId = useAppStore((s) => s.activeReportId);
   const setActiveReport = useAppStore((s) => s.setActiveReport);
-  const autoOpenedRef = useRef<string | null>(null);
-
-  // Layer 2 — only auto-flip the panel if no other report is currently
-  // active. We *don't* overwrite an existing selection on every render;
-  // that would yank focus from a report the user is reading. We also track
-  // what we've auto-opened to avoid re-opening if the user explicitly closes it.
-  useEffect(() => {
-    if (mentionedReportId && !activeReportId && autoOpenedRef.current !== mentionedReportId) {
-      autoOpenedRef.current = mentionedReportId;
-      setActiveReport(mentionedReportId, null);
-    }
-  }, [mentionedReportId, activeReportId, setActiveReport]);
+  // `autoOpenedRef` kept for backward compatibility but no longer used —
+  // the ReportCard now owns the "open full report" action entirely.
 
   if (message.role === 'tool') {
     return (
@@ -230,38 +201,21 @@ function MessageContent({ message, pendingToolIds = new Set() }: { message: Mess
           <MarkdownText source={text} />
         </div>
       )}
-      {/* Layer 3 — explicit fallback button & Share */}
+      {/* Inline Report Card — shows metrics preview + "View Full Report" button */}
       {mentionedReportId && (
-        <div className="flex items-center gap-2 mt-2">
-          <button
-            onClick={() => setActiveReport(mentionedReportId, null)}
-            title={`Open ${mentionedReportId} in artifacts panel`}
-            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-accent/15 hover:bg-accent/25 text-accent border border-accent/30 transition-colors"
-          >
-            <FileText size={12} strokeWidth={2} />
-            Open in Artifacts
-          </button>
-          <button
-            onClick={() => {
-              const shareText = `Check out my new algorithmic trading strategy! Generated with StratForge AI.\nReport ID: ${mentionedReportId}`;
-              navigator.clipboard.writeText(shareText);
-            }}
-            title="Copy Share Text"
-            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-[#24A1DE]/15 hover:bg-[#24A1DE]/25 text-[#24A1DE] border border-[#24A1DE]/30 transition-colors"
-          >
-            {/* Share Icon placeholder, using text since lucide icon might not be imported yet */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-            Share
-          </button>
-        </div>
+        <ReportCard reportId={mentionedReportId} />
       )}
-      {toolUses.map((tu, i) => (
-        <div key={i} className="text-xs text-fg-muted flex items-center gap-2 py-0.5">
-          <span className="text-fg-subtle">↳</span>
-          <span className="font-mono text-fg">{String(tu.name)}</span>
-          <span className="text-fg-subtle truncate">{JSON.stringify(tu.input).substring(0, 80)}</span>
-        </div>
-      ))}
+      {toolUses.length > 0 && (
+        <ToolActivity
+          items={toolUses.map((tu, i) => ({
+            id: String(tu.id ?? `${i}`),
+            name: String(tu.name ?? ''),
+            input: (tu.input as Record<string, unknown>) ?? {},
+            result: undefined,
+          }))}
+          streaming={false}
+        />
+      )}
     </>
   );
 }

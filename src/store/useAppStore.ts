@@ -35,6 +35,7 @@ import {
 } from '@/lib/artifactCommands';
 
 export type Theme = 'light' | 'dark' | 'system';
+export type FontSize = 'small' | 'medium' | 'large';
 export type SidebarTab = 'chat' | 'tree' | 'code';
 export type PermissionMode = 'ask' | 'accept-edits' | 'plan' | 'bypass';
 
@@ -97,6 +98,7 @@ interface AppStore {
   /** URL the AI has asked us to preview via `open_preview` tool. */
   previewUrl: string | null;
   theme: Theme;
+  fontSize: FontSize;
   askPermissions: boolean;
   permissionMode: PermissionMode;
 
@@ -155,6 +157,7 @@ interface AppStore {
   removeTask: (sessionId: string, id: string) => void;
   clearDoneTasks: (sessionId: string) => void;
   setTheme: (theme: Theme) => void;
+  setFontSize: (size: FontSize) => void;
   setAskPermissions: (v: boolean) => void;
   setPermissionMode: (mode: PermissionMode) => void;
 
@@ -224,6 +227,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   tasksBySession: {},
   previewUrl: null,
   theme: 'dark',
+  fontSize: 'medium',
   askPermissions: true,
   permissionMode: 'accept-edits',
 
@@ -238,7 +242,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set((s) => ({ chatDraft: s.chatDraft ? `${s.chatDraft} ${text}` : text })),
 
   settingsOpen: false,
-  settingsSection: 'providers',
+  settingsSection: 'general',
   providers: [],
   providersLoading: false,
 
@@ -524,6 +528,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
       },
     })),
   setTheme: (theme) => set({ theme }),
+  setFontSize: (size) => {
+    set({ fontSize: size });
+    // Apply font size to document root
+    const root = document.documentElement;
+    root.classList.remove('font-small', 'font-medium', 'font-large');
+    root.classList.add(`font-${size}`);
+  },
   setAskPermissions: (v) => set({ askPermissions: v }),
   setPermissionMode: (mode) => set({ permissionMode: mode, askPermissions: mode === 'ask' }),
 
@@ -587,26 +598,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // ---------- Chat streaming (Phase 6) ----------
   loadMessages: async (sessionId) => {
-    // Clear any report carried over from a previous session — we'll
-    // restore the latest one for THIS session below if one exists.
-    set({ activeReportId: null, activeReportTitle: null });
+    // Clear any report carried over from a previous session — we do NOT
+    // auto-restore the latest report on session switch. User must click
+    // the "View Full Report" button inside a ReportCard to open it.
+    set({ activeReportId: null, activeReportTitle: null, artifactsOpen: false });
     try {
       const msgs = await listSessionMessages(sessionId);
       set((s) => ({
         messagesBySession: { ...s.messagesBySession, [sessionId]: msgs },
       }));
-      // After loading history, surface the most recent rendered report so
-      // the artifacts panel auto-restores even for sessions that ran the
-      // pipeline before the panel was wired. The scan logic lives in
-      // `lib/artifactCommands` so the chat-input interceptor can reuse it.
-      const foundReport = findLatestReportInMessages(msgs);
-      if (foundReport) {
-        set({
-          activeReportId: foundReport.id,
-          activeReportTitle: foundReport.title,
-          artifactsOpen: true,
-        });
-      }
     } catch { /* ignore */ }
   },
 
@@ -694,28 +694,42 @@ export const useAppStore = create<AppStore>((set, get) => ({
           t.id === frame.tool_use_id ? { ...t, result: { ok: frame.ok, output: frame.output, error: frame.error } } : t
         );
         set({ streamingToolsBySession: { ...st.streamingToolsBySession, [sessionId]: tools } });
-        // Auto-open the artifacts panel for any tool result that produced
-        // a report. Today this is `render_report` — but we key on the
-        // shape of the output (presence of `report_id`) so future tools
-        // that emit reports plug in for free.
-        if (frame.ok && frame.output && typeof frame.output === 'object') {
-          const out = frame.output as Record<string, unknown>;
-          const rid = typeof out.report_id === 'string' ? out.report_id : null;
-          if (rid) {
-            const title = typeof out.title === 'string' ? out.title : null;
-            set({
-              activeReportId: rid,
-              activeReportTitle: title,
-              artifactsOpen: true,
-            });
+        // NOTE: We intentionally do NOT auto-open the Artifacts or Preview
+        // panels when a report_id arrives. The inline ReportCard in chat
+        // renders a compact metrics preview + a "View Full Report" button;
+        // the user explicitly clicks that to open the full report.
+        // Keeping `previewUrl` in sync only when the agent explicitly uses
+        // the process-based `open_preview` action (e.g. dev servers).
+        if (frame.ok && frame.output) {
+          let out: Record<string, unknown> | null = null;
+          if (typeof frame.output === 'object') {
+            out = frame.output as Record<string, unknown>;
+          } else if (typeof frame.output === 'string') {
+            try {
+              const parsed = JSON.parse(frame.output);
+              if (parsed && typeof parsed === 'object') {
+                out = parsed as Record<string, unknown>;
+              }
+            } catch {
+              // Not JSON — skip, no auto-preview
+            }
           }
-          // Auto-open preview when AI calls `open_preview` tool
-          if (out.action === 'open_preview' && typeof out.url === 'string') {
-            get().setPreviewUrl(out.url as string);
-          }
-          // Auto-open preview when AI starts a process with a detected port
-          if (typeof out.preview_url === 'string') {
-            get().setPreviewUrl(out.preview_url as string);
+
+          if (out) {
+            // A tool result carrying a `report_id` no longer flips the
+            // artifacts panel — the inline ReportCard handles the preview.
+            // Keep the two explicit dev-server hooks only:
+            //   1. open_preview action from a user-triggered preview tool
+            //   2. preview_url from a process that detected a server port
+            // Neither fires for backtest reports by default.
+            if (out.action === 'open_preview' && typeof out.url === 'string'
+                && !String(out.url).includes('/api/reports/')) {
+              get().setPreviewUrl(out.url as string);
+            }
+            if (typeof out.preview_url === 'string'
+                && !String(out.preview_url).includes('/api/reports/')) {
+              get().setPreviewUrl(out.preview_url as string);
+            }
           }
         }
       } else if (frame.type === 'message') {

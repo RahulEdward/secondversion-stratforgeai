@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { X, ArrowLeft } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import SettingsNav from './SettingsNav';
+import GeneralPanel from './GeneralPanel';
 import ProvidersPanel from './ProvidersPanel';
 import MemoryPanel from './MemoryPanel';
 
@@ -52,9 +53,10 @@ export default function SettingsPage() {
       <div className="flex flex-1 min-h-0">
         <SettingsNav />
         <main className="flex-1 flex flex-col min-w-0">
+          {section === 'general' && <GeneralPanel />}
           {section === 'providers' && <ProvidersPanel />}
           {section === 'memory' && <MemoryPanel />}
-          {section !== 'providers' && section !== 'memory' && (
+          {section !== 'general' && section !== 'providers' && section !== 'memory' && (
             <div className="flex-1 flex items-center justify-center text-sm text-fg-muted">
               This section is coming in a later phase.
             </div>

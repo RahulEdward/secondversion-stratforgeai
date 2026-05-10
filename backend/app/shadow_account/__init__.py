@@ -4,6 +4,8 @@ Public API (for tools/tests/external callers):
     extract_shadow_profile: journal → ShadowProfile
     ShadowProfile / ShadowRule / ShadowBacktestResult / AttributionBreakdown
     storage: save_profile / load_profile / find_by_journal_hash
+    render_shadow_report: journal-based shadow report
+    render_strategy_report: StratForge backtest report (Vibe-Trading style)
 """
 
 from app.shadow_account.backtester import (
@@ -19,6 +21,7 @@ from app.shadow_account.codegen import (
 )
 from app.shadow_account.extractor import extract_shadow_profile
 from app.shadow_account.reporter import render_shadow_report
+from app.shadow_account.strategy_reporter import render_strategy_report
 from app.shadow_account.models import (
     AttributionBreakdown,
     ShadowBacktestResult,
@@ -45,6 +48,7 @@ __all__ = [
     "render_config",
     "render_shadow_report",
     "render_signal_engine",
+    "render_strategy_report",
     "run_shadow_backtest",
     "save_profile",
     "select_multi_market_codes",

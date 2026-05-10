@@ -36,7 +36,7 @@ def run_backtest(run_dir: str) -> str:
     if "source" not in config:
         return json.dumps({"status": "error", "error": "config.json missing 'source' field (tushare/okx/yfinance)"}, ensure_ascii=False)
 
-    valid_sources = {"tushare", "okx", "yfinance", "akshare", "ccxt", "stratforge", "auto"}
+    valid_sources = {"stratforge", "auto"}
     if config["source"] not in valid_sources:
         return json.dumps({"status": "error", "error": f"source must be one of {valid_sources}, got: {config['source']}"}, ensure_ascii=False)
 
@@ -44,14 +44,17 @@ def run_backtest(run_dir: str) -> str:
     if not signal_path.exists():
         return json.dumps({"status": "error", "error": "code/signal_engine.py not found"}, ensure_ascii=False)
 
-    agent_root = Path(__file__).resolve().parents[2]
-    entry_script = agent_root / "backtest" / "runner.py"
+    # backtest_tool.py lives at backend/app/agent_tools/backtest_tool.py so
+    # parents[2] == backend/. The runner module we invoke lives under
+    # backend/app/backtest_engine/runner.py.
+    backend_root = Path(__file__).resolve().parents[2]
+    entry_script = backend_root / "app" / "backtest_engine" / "runner.py"
 
     runner = Runner(timeout=300)
     result = runner.execute(
         entry_script,
         run_path,
-        cwd=agent_root,
+        cwd=backend_root,
         cli_args=[str(run_path)],
     )
 

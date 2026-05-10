@@ -1,24 +1,33 @@
-"""Reports — HTML + PDF output for a finished backtest.
+"""Reports — lookup + PDF helpers for rendered backtest reports.
 
-Public entry points:
-    render.render_report(backtest_id=..., monte_carlo_id=..., walk_forward_id=...,
-                         optimization_id=...) -> ReportMetadata
-    pdf.export_pdf(project_id, report_id, *, force=False) -> Path
-
-The HTML is written eagerly on `render_report` so the viewer route can serve
-it immediately; the PDF is rendered lazily on first request and cached.
+The actual HTML/PDF generation lives in
+``app.shadow_account.strategy_reporter.render_strategy_report`` (called
+by the agent tool ``generate_report``). This package keeps only the
+disk-level helpers the ``/api/reports/*`` routes use.
 """
 
-from .render import render_report, load_report_metadata, report_paths, find_report
-from .pdf import export_pdf, export_pdf_sync, pdf_exists, ReportNotFound
+from .render import (
+    ReportMetadata,
+    find_report,
+    load_report_metadata,
+    report_paths,
+    render_report,  # kept as a stub that raises NotImplementedError
+)
+from .pdf import (
+    ReportNotFound,
+    export_pdf,
+    export_pdf_sync,
+    pdf_exists,
+)
 
 __all__ = [
-    "render_report",
-    "load_report_metadata",
-    "report_paths",
-    "find_report",
+    "ReportMetadata",
+    "ReportNotFound",
     "export_pdf",
     "export_pdf_sync",
+    "find_report",
+    "load_report_metadata",
     "pdf_exists",
-    "ReportNotFound",
+    "report_paths",
+    "render_report",
 ]

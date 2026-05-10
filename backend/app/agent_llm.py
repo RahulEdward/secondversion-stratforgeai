@@ -130,7 +130,34 @@ def _openai_to_anthropic_messages(
             if isinstance(content, str):
                 out.append({"role": "user", "content": content})
             elif isinstance(content, list):
-                out.append({"role": "user", "content": content})
+                # Convert OpenAI vision format to Anthropic format
+                ant_blocks: List[Dict[str, Any]] = []
+                for block in content:
+                    if not isinstance(block, dict):
+                        continue
+                    btype = block.get("type", "")
+                    if btype == "text":
+                        ant_blocks.append({"type": "text", "text": block.get("text", "")})
+                    elif btype == "image_url":
+                        # OpenAI: {"type": "image_url", "image_url": {"url": "data:mime;base64,..."}}
+                        # Anthropic: {"type": "image", "source": {"type": "base64", "media_type": "...", "data": "..."}}
+                        url = (block.get("image_url") or {}).get("url", "")
+                        if url.startswith("data:"):
+                            # Parse data URI: data:image/png;base64,AAAA...
+                            header, b64_data = url.split(",", 1) if "," in url else ("", "")
+                            media_type = header.split(";")[0].replace("data:", "") if header else "image/png"
+                            ant_blocks.append({
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": b64_data,
+                                },
+                            })
+                    else:
+                        # Pass through unknown block types
+                        ant_blocks.append(block)
+                out.append({"role": "user", "content": ant_blocks if ant_blocks else content})
 
         elif role == "assistant":
             blocks: List[Dict[str, Any]] = []
@@ -560,6 +587,112 @@ def _call_ollama(
 
 # ── Public ChatLLM class ─────────────────────────────────────────────────
 
+def _call_chatgpt_subscription(
+    model: str,
+    messages: List[Dict[str, Any]],
+    tools: Optional[List[Dict[str, Any]]],
+    on_text_chunk: Optional[Callable[[str], None]],
+    timeout: Optional[int],
+) -> LLMResponse:
+    """Drive StratForge's ChatGPT web-OAuth provider and aggregate its
+    streaming frames into an LLMResponse matching AgentLoop's contract.
+
+    The provider's ``stream_chat`` is an async generator that emits
+    Anthropic-shaped ``{text, tool_use, tool_result, error}`` frames and
+    speaks the OpenAI Responses API under the hood. We:
+      1. split out the system prompt,
+      2. convert OpenAI tool defs → Anthropic tool defs (same shape the
+         provider already speaks on its native path),
+      3. run the async generator on a private event loop from this sync
+         call path (AgentLoop runs in a worker thread, not asyncio).
+    """
+    import asyncio
+    import threading
+
+    try:
+        from app.providers.registry import get_provider
+    except Exception as exc:
+        raise RuntimeError(
+            "StratForge provider registry unavailable — cannot route to "
+            "'chatgpt-subscription'."
+        ) from exc
+
+    provider_obj = get_provider("chatgpt-subscription")
+    if provider_obj is None:
+        raise RuntimeError("ChatGPT Subscription provider not registered")
+
+    system, rest = _split_system(messages)
+    ant_messages = _openai_to_anthropic_messages(rest)
+    ant_tools = _openai_tools_to_anthropic(tools)
+
+    text_parts: List[str] = []
+    tool_calls: List[ToolCallRequest] = []
+    error_msg: Optional[str] = None
+
+    async def _drive() -> None:
+        nonlocal error_msg
+        async for frame in provider_obj.stream_chat(
+            messages=ant_messages,
+            tools=ant_tools,
+            model=model,
+            system=system or None,
+        ):
+            ftype = frame.get("type")
+            if ftype == "text":
+                delta = frame.get("delta", "")
+                if delta:
+                    text_parts.append(delta)
+                    if on_text_chunk:
+                        try:
+                            on_text_chunk(delta)
+                        except Exception:
+                            pass
+            elif ftype == "tool_use":
+                raw_input = frame.get("input") or {}
+                if isinstance(raw_input, str):
+                    try:
+                        raw_input = json.loads(raw_input)
+                    except json.JSONDecodeError:
+                        raw_input = {"_raw": raw_input}
+                tool_calls.append(ToolCallRequest(
+                    id=str(frame.get("id") or f"call_{uuid.uuid4().hex[:8]}"),
+                    name=str(frame.get("name") or ""),
+                    arguments=raw_input if isinstance(raw_input, dict) else {"_raw": raw_input},
+                ))
+            elif ftype == "error":
+                error_msg = str(frame.get("message") or "Provider error")
+
+    # AgentLoop runs inside a daemon thread (orchestrator._run_agent_in_thread)
+    # with no event loop, so we spin up a private loop in another thread to
+    # drive the async generator to completion.
+    def _thread_target() -> None:
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(_drive())
+        finally:
+            try:
+                loop.close()
+            except Exception:
+                pass
+
+    t = threading.Thread(target=_thread_target, name="chatgpt-sub-stream", daemon=True)
+    t.start()
+    t.join(timeout=(timeout or 180))
+
+    if error_msg:
+        raise RuntimeError(error_msg)
+    if t.is_alive():
+        raise RuntimeError(f"ChatGPT subscription stream timed out after {timeout or 180}s")
+
+    finish = "tool_calls" if tool_calls else "stop"
+    return LLMResponse(
+        content="".join(text_parts),
+        tool_calls=tool_calls,
+        finish_reason=finish,
+    )
+
+
 class ChatLLM:
     """Drop-in replacement for Vibe-Trading's ChatLLM.
 
@@ -628,12 +761,23 @@ class ChatLLM:
                 return _call_google(provider, model, messages, tools, on_text_chunk, timeout)
             if provider == "ollama":
                 return _call_ollama(provider, model, messages, tools, on_text_chunk, timeout)
-            # Subscription / CLI providers — fall back to whichever the user has set.
-            if provider in {"chatgpt-subscription", "claude-cli"}:
-                # These providers have their own async streaming elsewhere.
-                # For AgentLoop compatibility, fall back to OpenAI-style
-                # completions using whatever tokens the provider stored.
-                return _call_openai(provider, model, messages, tools, on_text_chunk, timeout)
+            if provider == "chatgpt-subscription":
+                # ChatGPT web OAuth — drive StratForge's async provider
+                # directly instead of pretending it's an OpenAI API key user.
+                return _call_chatgpt_subscription(
+                    model, messages, tools, on_text_chunk, timeout
+                )
+            if provider == "claude-cli":
+                # Anthropic's local `claude` CLI runs as a persistent
+                # WebSocket subprocess that manages its own tool execution.
+                # It's not compatible with AgentLoop's turn-by-turn
+                # sync contract. Tell the user to pick a real API provider.
+                raise RuntimeError(
+                    "Claude CLI is a standalone session-based provider and "
+                    "can't drive the multi-agent research pipeline. Switch "
+                    "to an API key provider (Anthropic / OpenAI / Google) "
+                    "or ChatGPT Subscription in the model picker."
+                )
             raise RuntimeError(f"Unsupported provider '{provider}' for Vibe-Trading agents.")
         except Exception as exc:
             logger.exception("ChatLLM call failed (provider=%s model=%s)", provider, model)

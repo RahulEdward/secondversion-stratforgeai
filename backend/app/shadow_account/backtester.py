@@ -4,7 +4,7 @@ Responsibilities:
     1. Pick representative symbols per market based on the user's preferred
        markets (with a liquid-basket fallback).
     2. Render a run_dir (via ``codegen.write_run_dir``) and call
-       ``app.agent_tools.backtest_tool.run_backtest``.
+       ``src.tools.backtest_tool.run_backtest``.
     3. Parse the emitted artifacts (metrics JSON / equity CSV) back into a
        ``ShadowBacktestResult``.
     4. Compute attribution: noise trades, missed signals, early/late exits,
@@ -119,7 +119,7 @@ def run_shadow_backtest(
             None or the file is missing.
         run_backtest_fn: Injection point for tests — callable(run_dir_str)
             returning the same JSON payload as
-            ``app.agent_tools.backtest_tool.run_backtest``. Defaults to the real
+            ``src.tools.backtest_tool.run_backtest``. Defaults to the real
             entrypoint.
 
     Returns:

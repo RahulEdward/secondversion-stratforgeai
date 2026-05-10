@@ -20,7 +20,7 @@ interface NavItem {
 }
 
 const ITEMS: NavItem[] = [
-  { id: 'general', label: 'General', icon: GeneralIcon, enabled: false },
+  { id: 'general', label: 'General', icon: GeneralIcon, enabled: true },
   { id: 'providers', label: 'Providers', icon: Plug, enabled: true },
   { id: 'automations', label: 'Automations', icon: Zap, enabled: false },
   { id: 'plugins', label: 'Plugins', icon: Puzzle, enabled: false },

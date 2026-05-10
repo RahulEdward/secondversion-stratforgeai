@@ -742,12 +742,103 @@ def get_plotly_js() -> Response:
     )
 
 
+# ── Preview file route — serves HTML files written by the agent ──────────
+
+@router.get("/preview-file")
+def preview_file(path: str) -> HTMLResponse:
+    """Serve an HTML file from the agent's run directory for Preview panel.
+
+    Security: only serves .html files from within the backend/runs/ directory.
+    """
+    from pathlib import Path as _Path
+
+    # Resolve and validate the path
+    backend_dir = _Path(__file__).resolve().parents[1]
+    runs_dir = backend_dir / "runs"
+
+    # The path might be relative to runs/ or absolute
+    candidate = _Path(path)
+    if not candidate.is_absolute():
+        candidate = runs_dir / candidate
+
+    candidate = candidate.resolve()
+
+    # Security: must be under runs/ and must be .html
+    if not str(candidate).startswith(str(runs_dir)):
+        raise HTTPException(status_code=403, detail="Access denied — path outside runs/")
+    if not candidate.suffix == ".html":
+        raise HTTPException(status_code=400, detail="Only .html files can be previewed")
+    if not candidate.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return HTMLResponse(content=candidate.read_text(encoding="utf-8"))
+
+
 # NOTE on route order: the `.pdf` route MUST be registered before the
 # bare `/reports/{report_id}` route. Starlette's default `{path}`
 # converter accepts dots, so `/reports/rp_xxx.pdf` would otherwise be
 # matched by `/reports/{report_id}` with `report_id='rp_xxx.pdf'` — the
 # PDF handler would never run, and `find_report` would 404. This was
 # the source of the "blank page on download" the artifacts pane showed.
+
+
+@router.get("/reports/{report_id}/meta")
+def get_report_meta(report_id: str) -> Dict[str, Any]:
+    """Return the sidecar JSON metadata for a report (title, grade, verdict, score).
+
+    Used by the inline ReportCard in chat to render a compact summary
+    without loading the full HTML iframe.
+    """
+    from .reports import find_report
+
+    found = find_report(report_id)
+    if found is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    _project_id, meta = found
+    return meta
+
+
+@router.get("/reports/{report_id}/metrics")
+def get_report_metrics(report_id: str) -> Dict[str, Any]:
+    """Return the flat metrics dict (sharpe, return, drawdown, etc.) for a report.
+
+    Looks up the originating backtest_id and reads metrics.csv from the
+    run_dir. Used by the inline ReportCard to show a 6-metric strip.
+    """
+    from .reports import find_report
+    from pathlib import Path as _Path
+    import pandas as _pd
+
+    found = find_report(report_id)
+    if found is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    _project_id, meta = found
+    backtest_id = meta.get("backtest_id", "")
+    if not backtest_id:
+        raise HTTPException(status_code=404, detail="Report has no linked backtest")
+
+    backend_dir = _Path(__file__).resolve().parents[1]
+    metrics_csv = backend_dir / "runs" / backtest_id / "artifacts" / "metrics.csv"
+    if not metrics_csv.exists():
+        raise HTTPException(status_code=404, detail="metrics.csv not found for this backtest")
+
+    try:
+        df = _pd.read_csv(metrics_csv)
+        if df.empty:
+            return {}
+        row = df.iloc[0].to_dict()
+        # Keep only numeric-coercible values
+        out: Dict[str, float] = {}
+        for k, v in row.items():
+            try:
+                if _pd.isna(v):
+                    continue
+                out[str(k)] = float(v)
+            except (TypeError, ValueError):
+                continue
+        return out
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to parse metrics: {exc}")
 
 
 @router.get("/reports/{report_id}.pdf")

@@ -1,22 +1,22 @@
-"""StratForge dataset loader — reads uploaded parquet files.
+"""StratForge dataset loader — THE ONLY data source for StratForge AI.
 
-This loader lets Vibe-Trading's backtest engines consume datasets that the
-StratForge user uploaded through the desktop app's sidebar (CSV / XLSX
-normalized to parquet under ``<workspace>/data/<dataset_id>.parquet``).
+Reads uploaded parquet files that the user ingested through the desktop
+app's sidebar (CSV / XLSX normalized to parquet under
+``<workspace>/<project_id>/data/<dataset_id>.parquet``).
 
 Usage in config.json:
 
     {
         "source": "stratforge",
-        "codes":  ["ds_abcdef123456"],   # dataset_id(s) from StratForge
+        "codes":  ["ds_abcdef123456"],   # dataset_id from StratForge
         "start_date": "2020-01-01",
         "end_date":   "2025-12-31",
         "interval":   "1D"
     }
 
-The loader treats each dataset_id as a symbol, loads its parquet, filters
-by date range, and returns the DataFrame in the OHLCV format every engine
-expects (open/high/low/close/volume with DatetimeIndex).
+Each dataset_id becomes a symbol. Loader opens the parquet, canonicalizes
+column names to OHLCV, filters by date, and returns a DataFrame with a
+DatetimeIndex — the shape every backtest engine expects.
 """
 
 from __future__ import annotations
@@ -26,14 +26,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from app.backtest_engine.loaders.base import DataLoaderProtocol, validate_date_range
+from app.backtest_engine.loaders.base import validate_date_range
 from app.backtest_engine.loaders.registry import register
 
 logger = logging.getLogger(__name__)
 
 
-# Canonical column aliases — handle the various header shapes StratForge
-# ingests (plain lowercase, MT4/MT5 bracketed, Yahoo-style, etc.).
+# Column name aliases — cover plain lowercase, MT4/MT5 bracketed, Yahoo-style headers.
 _COL_ALIASES = {
     "open":   {"open", "o", "<open>", "opening_price", "price_open"},
     "high":   {"high", "h", "<high>", "highest", "price_high"},
@@ -42,16 +41,14 @@ _COL_ALIASES = {
     "volume": {"volume", "vol", "<vol>", "<tickvol>", "tick_volume", "qty"},
 }
 
-_DATE_ALIASES = {
-    "date", "datetime", "timestamp", "time", "<date>", "trade_date",
-}
+_DATE_ALIASES = {"date", "datetime", "timestamp", "time", "<date>", "trade_date"}
 
 
 def _canonicalize(df: pd.DataFrame) -> pd.DataFrame:
-    """Rename columns to lowercase OHLCV + promote date-like col to index."""
+    """Rename columns to lowercase OHLCV + promote date-like column to index."""
     lower = {str(c).strip().lower(): c for c in df.columns}
 
-    # Date → index
+    # Promote date column to index (if there's an obvious one)
     date_col = None
     for alias in _DATE_ALIASES:
         if alias in lower:
@@ -64,14 +61,13 @@ def _canonicalize(df: pd.DataFrame) -> pd.DataFrame:
         df = df.dropna(subset=[date_col])
         df = df.set_index(date_col).sort_index()
     elif not isinstance(df.index, pd.DatetimeIndex):
-        # Fall back: try to coerce existing index
         try:
             df.index = pd.to_datetime(df.index, errors="coerce")
             df = df[df.index.notna()].sort_index()
         except Exception:
             pass
 
-    # Rename OHLCV columns
+    # Rename OHLCV columns to canonical lowercase
     renames: dict[str, str] = {}
     for canonical, aliases in _COL_ALIASES.items():
         for alias in aliases:
@@ -84,7 +80,7 @@ def _canonicalize(df: pd.DataFrame) -> pd.DataFrame:
     if renames:
         df = df.rename(columns=renames)
 
-    # Ensure volume column exists even if the dataset didn't carry it
+    # Ensure volume exists even if source didn't carry it
     if "volume" not in df.columns:
         df["volume"] = 0.0
 
@@ -92,37 +88,45 @@ def _canonicalize(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _find_dataset_parquet(dataset_id: str) -> Path | None:
-    """Locate the parquet file for a dataset_id across all projects.
+    """Resolve ``dataset_id`` to its parquet path on disk.
 
-    StratForge stores datasets under ``<workspace>/<project_id>/data/<dataset_id>.parquet``.
-    We import the app's storage module lazily so this loader still works if
-    someone consumes ``backtest`` directly without the FastAPI layer.
+    Uses StratForge's storage module as the source of truth. Falls back to
+    a filesystem walk if the storage module isn't importable (e.g. loader
+    invoked directly without the FastAPI stack).
     """
+    # Primary path — StratForge's storage registry
     try:
-        # Prefer StratForge's authoritative lookup when available.
         from app import storage as _storage
-        ds = _storage.get_dataset(dataset_id)
-        if ds is None:
-            return None
-        # get_dataset() returns a row; reconstruct the path.
-        project_id = _storage._find_dataset_project(dataset_id)
-        if project_id is None:
-            return None
-        return _storage.dataset_path(project_id[0], dataset_id)
-    except Exception:
-        # Best-effort fallback: walk the usual workspace layout.
-        from pathlib import Path as _Path
-        candidates = list(_Path.home().glob(f".stratforge/**/data/{dataset_id}.parquet"))
-        candidates += list(_Path("D:/startfoge-ai-main").glob(f"**/data/{dataset_id}.parquet"))
-        return candidates[0] if candidates else None
+        found = _storage._find_dataset_project(dataset_id)
+        if found is not None:
+            project_id, _row = found
+            return _storage.dataset_path(project_id, dataset_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("StratForge storage lookup failed: %s", exc)
+
+    # Fallback — walk the workspace layout by convention
+    search_roots = [
+        Path.home() / ".stratforge",
+        Path.cwd(),
+        Path(__file__).resolve().parents[4],  # project root when running from backend/app/...
+    ]
+    for root in search_roots:
+        if not root.exists():
+            continue
+        for candidate in root.rglob(f"{dataset_id}.parquet"):
+            return candidate
+    return None
 
 
 @register
 class StratForgeLoader:
-    """Reads OHLCV from StratForge's uploaded-parquet workspace."""
+    """THE loader for StratForge AI. Reads uploaded parquet datasets."""
 
     name = "stratforge"
-    markets = {"forex", "crypto", "us_equity", "a_share", "hk_equity", "futures", "commodities"}
+    markets = {
+        "forex", "crypto", "us_equity", "a_share", "hk_equity",
+        "futures", "commodities", "macro", "fund",
+    }
     requires_auth = False
 
     def is_available(self) -> bool:  # pragma: no cover — always local
@@ -137,7 +141,7 @@ class StratForgeLoader:
         interval: str = "1D",
         fields: list[str] | None = None,
     ) -> dict[str, pd.DataFrame]:
-        """Load each ``dataset_id`` from disk and return an OHLCV frame per symbol."""
+        """Load each dataset_id from disk and return {symbol: DataFrame}."""
         if not codes:
             return {}
         validate_date_range(start_date, end_date)
@@ -156,17 +160,16 @@ class StratForgeLoader:
 
             df = _canonicalize(df)
 
-            # Date-range filter — keep inclusive endpoints
+            # Filter to requested date range (inclusive)
             if isinstance(df.index, pd.DatetimeIndex):
                 try:
                     df = df.loc[pd.Timestamp(start_date):pd.Timestamp(end_date)]
                 except Exception:
                     pass
 
-            # Keep only the columns engines need
             keep = [c for c in ("open", "high", "low", "close", "volume") if c in df.columns]
             if not keep:
-                logger.warning("Dataset %s has no OHLCV columns", code)
+                logger.warning("Dataset %s has no OHLCV columns after canonicalization", code)
                 continue
             df = df[keep].dropna(subset=[c for c in ("open", "close") if c in keep])
 

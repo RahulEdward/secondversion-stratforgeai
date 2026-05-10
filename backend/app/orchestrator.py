@@ -73,7 +73,119 @@ def _build_dataset_preamble(dataset_id: Optional[str]) -> str:
         f"\n  columns:    {', '.join(ds.columns)}"
         + (f"\n  has_ohlcv:  {ds.has_ohlcv}" if hasattr(ds, "has_ohlcv") else "")
         + range_str
-        + "\n"
+        + "\n\n"
+        "CRITICAL BACKTEST INSTRUCTION: When writing config.json for the "
+        "backtest tool, you MUST use:\n"
+        '  "source": "stratforge"\n'
+        f'  "codes": ["{ds.id}"]\n'
+        "This tells the engine to read the user's uploaded parquet file "
+        "directly. Do NOT use tushare/okx/yfinance/akshare — those require "
+        "external API keys the user may not have. The uploaded dataset "
+        "already contains all the OHLCV data needed.\n"
+        "\n"
+        "REPORT INSTRUCTION (MANDATORY — NO EXCEPTIONS):\n"
+        "After EVERY backtest that produces metrics, you MUST call the\n"
+        "built-in `generate_report` tool with the same run_dir you used for\n"
+        "`backtest`. That tool reads artifacts/metrics.csv + equity.csv +\n"
+        "trades.csv and renders a polished HTML report using StratForge's\n"
+        "existing template (equity curve chart, drawdown chart, metric cards,\n"
+        "trades table, dark purple theme). The UI auto-opens the result in\n"
+        "its Preview panel; the PDF is lazily rendered at the same URL with\n"
+        "`.pdf` appended.\n"
+        "\n"
+        "CRITICAL — DO NOT SKIP THE TOOL CALL:\n"
+        "  * NEVER say 'Report generated' unless you've actually called\n"
+        "    generate_report AND got back a report_id starting with rp_.\n"
+        "  * NEVER write the words 'Report generated. View it in the\n"
+        "    Preview panel.' without first having called the tool.\n"
+        "  * Your reply MUST include the report_id verbatim (e.g.\n"
+        "    'Report rp_a9a6b3840eb19086 ready.'). The UI uses that id\n"
+        "    to render an inline ReportCard with a 'View Full Report'\n"
+        "    button. No id = no card = user confused.\n"
+        "\n"
+        "DO NOT use write_file to build report.html yourself. That's slower,\n"
+        "buggier, inconsistent across sessions, and bypasses the existing\n"
+        "template system.\n"
+        "\n"
+        "DO NOT dump raw metrics.csv as a markdown table in chat. The user\n"
+        "gets the Preview panel with charts — a text dump is noise.\n"
+        "\n"
+        "Workflow (copy this flow exactly, TOOL CALLS ARE NOT OPTIONAL):\n"
+        "  1. Call `backtest(run_dir=...)`\n"
+        "     → writes artifacts/metrics.csv, equity.csv, trades.csv\n"
+        "  2. Call `generate_report(run_dir=..., strategy_name='...',\n"
+        "     takeaway='...')`\n"
+        "     → returns {report_id: 'rp_xxxxxxxx', grade, verdict, score,\n"
+        "        preview_url, pdf_url}\n"
+        "  3. NOW you can reply in chat. Include the report_id:\n"
+        "     'Report rp_xxxxxxxx ready — Grade A-, Sharpe 1.3, 342 trades.\n"
+        "      The Preview panel shows the equity curve and full metrics.'\n"
+        "\n"
+        "If the user asks for a PDF, tell them the same report is available\n"
+        "at the `.pdf` URL returned by generate_report (or just append `.pdf`\n"
+        "to the preview URL). If they ask for Excel/CSV, read the artifacts/\n"
+        "trades.csv or metrics.csv with `read_file` and offer it.\n"
+        "\n"
+        "INDICATOR LIBRARY INSTRUCTION (MANDATORY):\n"
+        "StratForge ships with 68+ production-quality indicators already installed.\n"
+        "Your workflow for any strategy that uses technical indicators:\n"
+        "  Step A. Call `list_indicators` FIRST to see what's available.\n"
+        "  Step B. If the user's indicator exists in the list, use it inside\n"
+        "          signal_engine.py via `from app.indicators import compute`\n"
+        "          → `compute(df, 'rsi', {'period': 14})`. Do NOT re-implement\n"
+        "          RSI/MACD/EMA/Bollinger/ATR/SuperTrend/Ichimoku etc. from scratch.\n"
+        "  Step C. Call `use_indicator` when you want to preview values on the\n"
+        "          user's active dataset before wiring it into the strategy.\n"
+        "  Step D. Only if the user requests an indicator that's NOT in the\n"
+        "          library (e.g. a novel custom formula), call `add_indicator`\n"
+        "          to register it permanently under app/indicators/<name>.py.\n"
+        "          Next session it'll already be in list_indicators.\n"
+        "This saves tokens, reduces bugs, and keeps the library growing.\n"
+        "\n"
+        "SIGNAL ENGINE CONTRACT (CRITICAL — MUST FOLLOW EXACTLY):\n"
+        "Your signal_engine.py MUST define a class named `SignalEngine` with\n"
+        "this EXACT signature:\n"
+        "\n"
+        "    class SignalEngine:\n"
+        "        def generate(self, data_map):\n"
+        "            # data_map: Dict[str, pd.DataFrame]\n"
+        "            #   keys   = dataset_id strings (same as config.codes)\n"
+        "            #   values = OHLCV DataFrame with DatetimeIndex +\n"
+        "            #            columns: open, high, low, close, volume\n"
+        "            # Returns: Dict[str, pd.Series]\n"
+        "            #   keys   = same dataset_id strings\n"
+        "            #   values = signal Series aligned to df.index,\n"
+        "            #            values in [-1.0, 1.0]:\n"
+        "            #               1.0  = fully long\n"
+        "            #               0.5  = half long\n"
+        "            #               0.0  = flat (no position)\n"
+        "            #              -1.0  = fully short\n"
+        "            result = {}\n"
+        "            for code, df in data_map.items():\n"
+        "                rsi = compute(df, 'rsi', {'period': 14})\n"
+        "                ema = compute(df, 'ema', {'period': 20})\n"
+        "                if hasattr(rsi, 'iloc') and hasattr(rsi, 'columns'):\n"
+        "                    rsi = rsi.iloc[:, 0]\n"
+        "                if hasattr(ema, 'iloc') and hasattr(ema, 'columns'):\n"
+        "                    ema = ema.iloc[:, 0]\n"
+        "                # Build a signal Series (NOT a DataFrame, NOT a dict)\n"
+        "                signal = pd.Series(0.0, index=df.index)\n"
+        "                signal[(rsi > 50) & (df['close'] > ema)] = 1.0\n"
+        "                signal[(rsi < 45) | (df['close'] < ema)] = 0.0\n"
+        "                result[code] = signal\n"
+        "            return result\n"
+        "\n"
+        "RULES:\n"
+        "  - MUST return a dict, NOT a DataFrame. Keys must match config.codes.\n"
+        "  - MUST return pd.Series per code, NOT a DataFrame.\n"
+        "  - Signal values MUST be floats in [-1.0, 1.0]. Use 0.0 for flat.\n"
+        "  - Do NOT manage stop loss / take profit INSIDE signal_engine —\n"
+        "    the backtest engine handles exits. Just emit the direction.\n"
+        "  - If you need ATR-based stops, set them via config.json\n"
+        "    (stop_loss_atr, take_profit_atr) — not in signal generation.\n"
+        "  - If your signal output is empty (no non-zero values), the engine\n"
+        "    reports 'No valid signals generated' and no trades execute.\n"
+        "    Always verify your entry logic produces at least some 1.0s or -1.0s.\n"
     )
 
 
@@ -180,13 +292,19 @@ def _run_agent_in_thread(
                 })
             elif event_type == "tool_result":
                 status = data.get("status", "ok")
+                tool_name = data.get("tool", "")
+                preview_text = data.get("preview", "")
                 _enqueue({
                     "type": "tool_result",
-                    "tool_use_id": f"call_{data.get('tool','?')}_{data.get('iter', 0)}",
+                    "tool_use_id": f"call_{tool_name}_{data.get('iter', 0)}",
                     "ok": status == "ok",
-                    "output": data.get("preview", ""),
-                    "error": None if status == "ok" else data.get("preview", ""),
+                    "output": preview_text,
+                    "error": None if status == "ok" else preview_text,
                 })
+                # When `generate_report` finishes, its JSON payload already
+                # carries `action: open_preview` + `preview_url`. The UI's
+                # store listens for that and auto-opens the Preview panel,
+                # so no extra bridge frame is needed here.
             elif event_type == "compact":
                 # Inform the UI that context was compressed; surfaced as a
                 # low-priority text note so users know why the thread just
